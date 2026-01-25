@@ -77,6 +77,10 @@ ipcMain.handle('select-folder', async () => {
   return customWorkingDir;
 });
 
+ipcMain.handle('get-cwd', () => {
+  return customWorkingDir || process.cwd();
+});
+
 // IPC Handler for executing gitmastery commands
 ipcMain.handle('execute-command', async (_event, command: string): Promise<CommandResult> => {
   return new Promise((resolve) => {

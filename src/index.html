@@ -40,6 +40,39 @@
       </div>
     </header>
 
+    <!-- Query Bar -->
+    <section class="query-bar">
+      <!-- Row 1: CWD Path -->
+      <div class="cwd-row">
+        <span id="cwdPath" class="cwd-path">...</span>
+      </div>
+
+      <!-- Row 2: Input and Shell Selector -->
+      <div class="input-row">
+        <div class="command-input-container">
+          <span class="prompt-char">$</span>
+          <input type="text" id="customCommandInput" placeholder="Enter command to execute..." />
+        </div>
+
+        <div class="shell-selector">
+          <div class="shell-option active" data-shell="cmd">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" y1="19" x2="20" y2="19"></line>
+            </svg>
+            CMD
+          </div>
+          <div class="shell-option disabled" data-shell="bash" title="Coming soon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5.5 15l.39.24a6 6 0 0 0 7.75-2.06 6 6 0 0 0-1.61-9.52"></path>
+              <line x1="12" y1="19" x2="12" y2="19"></line>
+            </svg>
+            Bash
+          </div>
+        </div>
+      </div>
+    </section>
+
     <main>
       <section class="commands-section">
         <h2>Commands</h2>
@@ -75,7 +108,6 @@
             </svg>
             <span>Setup</span>
           </button>
-
 
           <button class="cmd-button" data-command="gitmastery check git">
             <svg class="button-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"

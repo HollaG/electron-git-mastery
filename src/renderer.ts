@@ -9,6 +9,7 @@ interface ElectronAPI {
   executeCommand: (command: string) => Promise<CommandResult>;
   selectFile: () => Promise<string | null>;
   selectFolder: () => Promise<string | null>;
+  getCwd: () => Promise<string>;
 }
 
 declare global {
@@ -32,8 +33,70 @@ const historyContainer = document.getElementById('history') as HTMLDivElement;
 const commandButtons = document.querySelectorAll('.cmd-button') as NodeListOf<HTMLButtonElement>;
 const setWorkingDirBtn = document.getElementById('setWorkingDir') as HTMLButtonElement;
 const setExePathBtn = document.getElementById('setExePath') as HTMLButtonElement;
+const cwdPath = document.getElementById('cwdPath') as HTMLSpanElement;
+const customCommandInput = document.getElementById('customCommandInput') as HTMLInputElement;
 
-// History array to keep track of all executed commands
+// ... (history array)
+
+// Initialize CWD display
+(async () => {
+  try {
+    const cwd = await window.electronAPI.getCwd();
+    cwdPath.textContent = cwd;
+    cwdPath.title = cwd;
+  } catch (error) {
+    console.error('Failed to get CWD:', error);
+    cwdPath.textContent = 'Error fetching CWD';
+  }
+})();
+
+// Custom Command Input Handler
+customCommandInput.addEventListener('keydown', async (e) => {
+  if (e.key === 'Enter') {
+    const command = customCommandInput.value.trim();
+    if (command) {
+      customCommandInput.disabled = true;
+      try {
+        await executeCommand(command, { classList: { add: () => {}, remove: () => {} }, disabled: false } as any);
+        customCommandInput.value = '';
+      } finally {
+        customCommandInput.disabled = false;
+        customCommandInput.focus();
+      }
+    }
+  }
+});
+
+// ... (Configuration Button Handlers)
+
+setWorkingDirBtn.addEventListener('click', async () => {
+  setWorkingDirBtn.disabled = true;
+  try {
+    const path = await window.electronAPI.selectFolder();
+    if (path) {
+      // Update CWD display
+      cwdPath.textContent = path;
+      cwdPath.title = path; // Show full path on hover
+      
+      const entry: HistoryEntry = {
+        command: 'Set Working Directory',
+        result: {
+          success: true,
+          output: `Working directory set to: ${path}`
+        },
+        timestamp: new Date()
+      };
+      history.push(entry);
+      addHistoryEntry(entry);
+    }
+  } catch (error) {
+    console.error('Failed to set working dir:', error);
+  } finally {
+    setWorkingDirBtn.disabled = false;
+  }
+});
+
+// ... (rest of the file)
 const history: HistoryEntry[] = [];
 
 // ... (existing code for history formatting)
@@ -62,28 +125,6 @@ setExePathBtn.addEventListener('click', async () => {
   }
 });
 
-setWorkingDirBtn.addEventListener('click', async () => {
-  setWorkingDirBtn.disabled = true;
-  try {
-    const path = await window.electronAPI.selectFolder();
-    if (path) {
-      const entry: HistoryEntry = {
-        command: 'Set Working Directory',
-        result: {
-          success: true,
-          output: `Working directory set to: ${path}`
-        },
-        timestamp: new Date()
-      };
-      history.push(entry);
-      addHistoryEntry(entry);
-    }
-  } catch (error) {
-    console.error('Failed to set working dir:', error);
-  } finally {
-    setWorkingDirBtn.disabled = false;
-  }
-});
 
 // ... (rest of the file)
 
