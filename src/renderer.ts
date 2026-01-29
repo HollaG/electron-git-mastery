@@ -6,7 +6,9 @@ interface CommandResult {
 }
 
 interface ElectronAPI {
-  executeCommand: (command: string) => Promise<CommandResult>;
+  executeCommand: (command: string) => Promise<void>;
+  onCommandOutput: (callback: (line: string) => void) => () => void;
+  onCommandComplete: (callback: (result: CommandResult) => void) => () => void;
   selectFile: () => Promise<string | null>;
   selectFolder: () => Promise<string | null>;
   getCwd: () => Promise<string>;
@@ -19,7 +21,7 @@ declare global {
 }
 
 // Make this file a module
-export {};
+export { };
 
 
 interface HistoryEntry {
@@ -57,7 +59,7 @@ customCommandInput.addEventListener('keydown', async (e) => {
     if (command) {
       customCommandInput.disabled = true;
       try {
-        await executeCommand(command, { classList: { add: () => {}, remove: () => {} }, disabled: false } as any);
+        await executeCommand(command, { classList: { add: () => { }, remove: () => { } }, disabled: false } as any);
         customCommandInput.value = '';
       } finally {
         customCommandInput.disabled = false;
@@ -77,7 +79,7 @@ setWorkingDirBtn.addEventListener('click', async () => {
       // Update CWD display
       cwdPath.textContent = path;
       cwdPath.title = path; // Show full path on hover
-      
+
       const entry: HistoryEntry = {
         command: 'Set Working Directory',
         result: {
@@ -160,7 +162,7 @@ function createHistoryEntry(entry: HistoryEntry): HTMLDivElement {
 
   const output = document.createElement('pre');
   output.className = `entry-output ${entry.result.success ? '' : 'error'}`;
-  
+
   if (entry.result.success) {
     output.textContent = entry.result.output;
   } else {
@@ -184,93 +186,198 @@ function clearEmptyState(): void {
 // Add entry to history display
 function addHistoryEntry(entry: HistoryEntry): void {
   clearEmptyState();
-  
+
   const entryElement = createHistoryEntry(entry);
-  
+
   // Insert at the beginning (latest at top)
   historyContainer.insertBefore(entryElement, historyContainer.firstChild);
-  
+
   // Scroll to top to show the latest entry
   historyContainer.scrollTop = 0;
 }
 
-// Execute command
+// Execute command with streaming output
 async function executeCommand(command: string, button: HTMLButtonElement): Promise<void> {
   // Disable button and show loading state
   button.classList.add('loading');
   button.disabled = true;
 
-  try {
-    const result = await window.electronAPI.executeCommand(command);
-    
-    const entry: HistoryEntry = {
-      command,
-      result,
-      timestamp: new Date(),
-    };
-
-    history.push(entry);
-    addHistoryEntry(entry);
-  } catch (error) {
-    const errorResult: CommandResult = {
-      success: false,
+  // Create initial history entry with empty output
+  const entry: HistoryEntry = {
+    command,
+    result: {
+      success: true,
       output: '',
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-    };
+    },
+    timestamp: new Date(),
+  };
 
-    const entry: HistoryEntry = {
-      command,
-      result: errorResult,
-      timestamp: new Date(),
-    };
+  history.push(entry);
+  clearEmptyState();
 
-    history.push(entry);
-    addHistoryEntry(entry);
-  } finally {
+  // Create and add the entry element
+  const entryDiv = document.createElement('div');
+  entryDiv.className = 'history-entry success';
+
+  const header = document.createElement('div');
+  header.className = 'entry-header';
+
+  const commandSpan = document.createElement('div');
+  commandSpan.className = 'entry-command';
+
+  // Add command text
+  const commandText = document.createTextNode(`$ ${command}`);
+  commandSpan.appendChild(commandText);
+
+  // Add inline spinner next to command text (persists until completion)
+  const inlineSpinner = document.createElement('div');
+  inlineSpinner.className = 'spinner-inline';
+  commandSpan.appendChild(inlineSpinner);
+
+  const timestamp = document.createElement('div');
+  timestamp.className = 'entry-timestamp';
+  timestamp.textContent = formatTimestamp(entry.timestamp);
+
+  header.appendChild(commandSpan);
+  header.appendChild(timestamp);
+
+  // Create loading container with spinner for code block (disappears on first output)
+  const loadingContainer = document.createElement('div');
+  loadingContainer.className = 'loading-container';
+
+  const spinner = document.createElement('div');
+  spinner.className = 'spinner';
+
+  const loadingText = document.createElement('span');
+  loadingText.textContent = 'Loading...';
+
+  loadingContainer.appendChild(spinner);
+  loadingContainer.appendChild(loadingText);
+
+  entryDiv.appendChild(header);
+  entryDiv.appendChild(loadingContainer);
+
+  // Insert at the beginning (latest at top)
+  historyContainer.insertBefore(entryDiv, historyContainer.firstChild);
+  historyContainer.scrollTop = 0;
+
+  let output: HTMLPreElement | null = null;
+  let hasReceivedOutput: boolean = false;
+
+  // Set up streaming listeners
+  const cleanupOutput = window.electronAPI.onCommandOutput((line: string) => {
+    // On first output, replace loading container with output element
+    if (!hasReceivedOutput) {
+      hasReceivedOutput = true;
+      loadingContainer.remove();
+
+      output = document.createElement('pre');
+      output.className = 'entry-output';
+      output.textContent = line;
+      entryDiv.appendChild(output);
+    } else if (output) {
+      // Append subsequent lines
+      output.textContent += '\n' + line;
+    }
+
+    // Auto-scroll to show new content
+    if (output) {
+      output.scrollTop = output.scrollHeight;
+    }
+  });
+
+  const cleanupComplete = window.electronAPI.onCommandComplete((result: CommandResult) => {
+    // Update the entry with final result
+    entry.result = result;
+
+    // Remove inline spinner from command header
+    inlineSpinner.remove();
+
+    // If we never received output, replace loading container with output element
+    if (!hasReceivedOutput) {
+      loadingContainer.remove();
+
+      output = document.createElement('pre');
+      output.className = `entry-output ${result.success ? '' : 'error'}`;
+
+      if (result.success) {
+        output.textContent = result.output || 'Command completed successfully';
+      } else {
+        output.textContent = result.error || result.output || 'Command failed';
+      }
+
+      entryDiv.appendChild(output);
+    } else if (output) {
+      // Update styling for existing output
+      output.className = `entry-output ${result.success ? '' : 'error'}`;
+
+      // If there was an error message, append it
+      if (!result.success && result.error) {
+        if (output.textContent) {
+          output.textContent += '\n\n' + result.error;
+        } else {
+          output.textContent = result.error;
+        }
+      }
+    }
+
+    // Update the entry styling based on success/failure
+    entryDiv.className = `history-entry ${result.success ? 'success' : 'error'}`;
+
     // Re-enable button
     button.classList.remove('loading');
     button.disabled = false;
+
+    // Cleanup listeners
+    cleanupOutput();
+    cleanupComplete();
+  });
+
+  try {
+    // Start the command execution
+    await window.electronAPI.executeCommand(command);
+  } catch (error) {
+    // Handle execution errors
+    const currentOutput = output as HTMLPreElement | null;
+    const errorResult: CommandResult = {
+      success: false,
+      output: currentOutput?.textContent || '',
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+
+    entry.result = errorResult;
+    entryDiv.className = 'history-entry error';
+
+    // Remove inline spinner from command header
+    inlineSpinner.remove();
+
+    // If loading container is still showing, replace it with error output
+    if (!hasReceivedOutput) {
+      loadingContainer.remove();
+
+      output = document.createElement('pre');
+      output.className = 'entry-output error';
+      output.textContent = errorResult.error || 'Unknown error';
+      entryDiv.appendChild(output);
+    } else if (currentOutput) {
+      currentOutput.className = 'entry-output error';
+      currentOutput.textContent += '\n\n' + (errorResult.error || 'Unknown error');
+    }
+
+    // Re-enable button
+    button.classList.remove('loading');
+    button.disabled = false;
+
+    // Cleanup listeners
+    cleanupOutput();
+    cleanupComplete();
   }
 }
 
 // Execute command with input (for interactive commands like setup)
 async function executeCommandWithInput(command: string, input: string, button: HTMLButtonElement): Promise<void> {
-  // Disable button and show loading state
-  button.classList.add('loading');
-  button.disabled = true;
-
-  try {
-    // For setup command, we'll pass the input as a parameter
-    const result = await window.electronAPI.executeCommand(`${command}:${input}`);
-    
-    const entry: HistoryEntry = {
-      command: `${command} (input: ${input})`,
-      result,
-      timestamp: new Date(),
-    };
-
-    history.push(entry);
-    addHistoryEntry(entry);
-  } catch (error) {
-    const errorResult: CommandResult = {
-      success: false,
-      output: '',
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-    };
-
-    const entry: HistoryEntry = {
-      command: `${command} (input: ${input})`,
-      result: errorResult,
-      timestamp: new Date(),
-    };
-
-    history.push(entry);
-    addHistoryEntry(entry);
-  } finally {
-    // Re-enable button
-    button.classList.remove('loading');
-    button.disabled = false;
-  }
+  // Use the same streaming logic as executeCommand
+  await executeCommand(`${command}:${input}`, button);
 }
 
 

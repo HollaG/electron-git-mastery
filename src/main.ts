@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import * as path from 'path';
 
 
@@ -81,11 +81,10 @@ ipcMain.handle('get-cwd', () => {
   return customWorkingDir || process.cwd();
 });
 
-// IPC Handler for executing gitmastery commands
-ipcMain.handle('execute-command', async (_event, command: string): Promise<CommandResult> => {
+// IPC Handler for executing gitmastery commands with streaming output
+ipcMain.handle('execute-command', async (event, command: string): Promise<void> => {
   return new Promise((resolve) => {
     // Check if command has input (format: "command:input")
-    let actualCommand: string;
     let userInput: string | null = null;
     let baseCommand = command;
 
@@ -97,29 +96,109 @@ ipcMain.handle('execute-command', async (_event, command: string): Promise<Comma
 
     // Determine executable path
     const exePath = customExePath || path.join(__dirname, '../gitmastery.exe');
-    
+
+    // Parse command into executable and args
     // Replace 'gitmastery' with the path to the exe
-    actualCommand = baseCommand.replace(/^gitmastery/, `"${exePath}"`);
-    
-    const childProcess = exec(actualCommand, { 
-      encoding: 'utf8',
-      shell: 'cmd.exe',
-      cwd: customWorkingDir || undefined, // Use custom working dir if set
-      env: process.env, // Inherit environment variables
-      timeout: 30000 // 30 second timeout
-    }, (error: any, stdout: string, stderr: string) => {
-      if (error) {
-        resolve({
-          success: false,
-          output: stdout || '',
-          error: `${stderr || error.message}\n\nCommand: ${actualCommand}\nCWD: ${customWorkingDir || 'default'}\nExit code: ${error.code || 'N/A'}\nKilled: ${error.killed || false}`,
-        });
+    const commandWithPath = baseCommand.replace(/^gitmastery/, `"${exePath}"`);
+
+    // Parse command string into command and arguments
+    // For Windows, we need to handle quoted paths properly
+    const args: string[] = [];
+    let currentArg = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < commandWithPath.length; i++) {
+      const char = commandWithPath[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ' ' && !inQuotes) {
+        if (currentArg) {
+          args.push(currentArg);
+          currentArg = '';
+        }
       } else {
-        resolve({
-          success: true,
-          output: stdout || stderr || 'Command executed successfully',
+        currentArg += char;
+      }
+    }
+    if (currentArg) {
+      args.push(currentArg);
+    }
+
+    const executable = args.shift() || exePath;
+
+    // Spawn the process
+    const childProcess = spawn(executable, args, {
+      cwd: customWorkingDir || undefined,
+      env: process.env,
+      shell: true, // Use shell for Windows compatibility
+    });
+
+    let stdoutBuffer = '';
+    let stderrBuffer = '';
+    let hasError = false;
+
+    // Handle stdout data
+    childProcess.stdout?.on('data', (data: Buffer) => {
+      const text = data.toString('utf8');
+      stdoutBuffer += text;
+
+      // Split by newlines and emit complete lines
+      const lines = stdoutBuffer.split(/\r?\n/);
+      stdoutBuffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+      lines.forEach(line => {
+        if (line) {
+          event.sender.send('command-output-line', line);
+        }
+      });
+    });
+
+    // Handle stderr data
+    childProcess.stderr?.on('data', (data: Buffer) => {
+      const text = data.toString('utf8');
+      stderrBuffer += text;
+
+      // Split by newlines and emit complete lines
+      const lines = stderrBuffer.split(/\r?\n/);
+      stderrBuffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+      lines.forEach(line => {
+        if (line) {
+          event.sender.send('command-output-line', line);
+        }
+      });
+    });
+
+    // Handle process errors
+    childProcess.on('error', (error: Error) => {
+      hasError = true;
+      event.sender.send('command-complete', {
+        success: false,
+        output: stdoutBuffer + stderrBuffer,
+        error: `Failed to execute command: ${error.message}`,
+      });
+      resolve();
+    });
+
+    // Handle process exit
+    childProcess.on('close', (code: number | null) => {
+      // Send any remaining buffered output
+      if (stdoutBuffer) {
+        event.sender.send('command-output-line', stdoutBuffer);
+      }
+      if (stderrBuffer) {
+        event.sender.send('command-output-line', stderrBuffer);
+      }
+
+      if (!hasError) {
+        const success = code === 0;
+        event.sender.send('command-complete', {
+          success,
+          output: success ? 'Command completed successfully' : `Command exited with code ${code}`,
+          error: success ? undefined : `Exit code: ${code}`,
         });
       }
+      resolve();
     });
 
     // If there's user input, write it to stdin

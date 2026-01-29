@@ -166,10 +166,6 @@ section h2 {
   width: 100%;
 }
 
-.query-main {
-  /* Removed - replaced by separate rows */
-}
-
 .cwd-path {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: 0.8rem;
@@ -431,6 +427,9 @@ section h2 {
   color: var(--teal-300);
   font-weight: 600;
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .entry-timestamp {
@@ -455,6 +454,46 @@ section h2 {
 
 .entry-output.error {
   color: #fca5a5;
+}
+
+/* Loading Spinner */
+.loading-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.85rem;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--teal-400);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Inline spinner for command header */
+.spinner-inline {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--teal-400);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive Design */
