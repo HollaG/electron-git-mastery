@@ -82,7 +82,7 @@ ipcMain.handle('get-cwd', () => {
 });
 
 // IPC Handler for executing gitmastery commands with streaming output
-ipcMain.handle('execute-command', async (event, command: string): Promise<void> => {
+ipcMain.handle('execute-command', async (event, command: string, workingDirectory?: string): Promise<void> => {
   return new Promise((resolve) => {
     // Check if command has input (format: "command:input")
     let userInput: string | null = null;
@@ -126,9 +126,12 @@ ipcMain.handle('execute-command', async (event, command: string): Promise<void> 
 
     const executable = args.shift() || exePath;
 
+    // Use the provided working directory, fall back to customWorkingDir or undefined
+    const cwd = workingDirectory || customWorkingDir || undefined;
+
     // Spawn the process
     const childProcess = spawn(executable, args, {
-      cwd: customWorkingDir || undefined,
+      cwd,
       env: process.env,
       shell: true, // Use shell for Windows compatibility
     });

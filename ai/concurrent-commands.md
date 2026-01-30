@@ -272,6 +272,145 @@ header.appendChild(killButton);
 
 ---
 
+## Working Directory Tracking (Implemented)
+
+### Problem
+When executing commands in separate processes, each process starts with the default working directory. The `cd` command doesn't work because:
+1. Each command spawns a new process
+2. Changing directory in one process doesn't affect others
+3. No persistent shell session to maintain context
+
+### Solution: Hybrid Approach
+Track the working directory in the renderer and pass it to each command execution:
+
+1. **State Management:**
+   - Maintain `currentWorkingDirectory` in renderer
+   - Initialize from `getCwd()` on app start
+   - Update when user changes directory via UI or `cd` command
+
+2. **CD Command Interception:**
+   - Parse commands to detect `cd` patterns
+   - Handle both absolute and relative paths
+   - Support Windows path formats (C:\, \\, .., .)
+   - Update UI and state without spawning a process
+
+3. **Command Execution:**
+   - Pass `currentWorkingDirectory` to all commands
+   - Main process uses this as `cwd` option for spawn
+   - Each command runs in the correct directory context
+
+### Implementation Details
+
+**Renderer (`renderer.ts`):**
+```typescript
+// Track current working directory
+let currentWorkingDirectory: string = '';
+
+// Parse cd commands
+function parseCdCommand(command: string): string | null {
+  const cdMatch = command.trim().match(/^cd\s+(.+)$/i);
+  if (!cdMatch) return null;
+  
+  let targetPath = cdMatch[1].trim();
+  // Remove quotes if present
+  if ((targetPath.startsWith('"') && targetPath.endsWith('"')) ||
+      (targetPath.startsWith("'") && targetPath.endsWith("'"))) {
+    targetPath = targetPath.slice(1, -1);
+  }
+  return targetPath;
+}
+
+// Resolve relative paths
+function resolvePath(targetPath: string, basePath: string): string {
+  // Handle absolute paths
+  if (/^[a-zA-Z]:\\/.test(targetPath) || 
+      targetPath.startsWith('\\\\') || 
+      targetPath.startsWith('/')) {
+    return targetPath;
+  }
+  
+  // Handle relative paths (.., ., subdirs)
+  const parts = basePath.split(/[\\\/]/);
+  const targetParts = targetPath.split(/[\\\/]/);
+  
+  for (const part of targetParts) {
+    if (part === '..') {
+      parts.pop();
+    } else if (part !== '.' && part !== '') {
+      parts.push(part);
+    }
+  }
+  
+  return parts.join('\\');
+}
+
+// Handle commands (intercept cd or execute normally)
+async function handleCommand(command: string, button: HTMLButtonElement): Promise<void> {
+  const cdPath = parseCdCommand(command);
+  
+  if (cdPath !== null) {
+    // Handle cd command
+    const newPath = resolvePath(cdPath, currentWorkingDirectory);
+    currentWorkingDirectory = newPath;
+    
+    // Update UI
+    cwdPath.textContent = newPath;
+    cwdPath.title = newPath;
+    
+    // Add to history
+    addHistoryEntry({
+      command,
+      result: {
+        success: true,
+        output: `Changed directory to: ${newPath}`
+      },
+      timestamp: new Date()
+    });
+  } else {
+    // Execute normal command with current working directory
+    await executeCommand(command, button);
+  }
+}
+```
+
+**Main Process (`main.ts`):**
+```typescript
+// Accept working directory parameter
+ipcMain.handle('execute-command', async (event, command: string, workingDirectory?: string): Promise<void> => {
+  // ...
+  const cwd = workingDirectory || customWorkingDir || undefined;
+  
+  const childProcess = spawn(executable, args, {
+    cwd,  // Use provided working directory
+    env: process.env,
+    shell: true,
+  });
+  // ...
+});
+```
+
+**Preload (`preload.ts`):**
+```typescript
+executeCommand: (command: string, workingDirectory?: string): Promise<void> =>
+  ipcRenderer.invoke('execute-command', command, workingDirectory),
+```
+
+### Benefits
+- ✅ `cd` commands work as expected
+- ✅ Maintains concurrent execution capability
+- ✅ No need for persistent shell session
+- ✅ UI shows current directory
+- ✅ Works with both absolute and relative paths
+- ✅ Supports Windows path formats
+
+### Limitations
+- Path resolution is client-side (doesn't validate if directory exists)
+- Environment variables in paths (like %USERPROFILE%) are not expanded
+- Symbolic links are not resolved
+- No shell-specific features (aliases, shell variables)
+
+---
+
 ## Implementation Instructions
 
 When asked to implement concurrent command execution:

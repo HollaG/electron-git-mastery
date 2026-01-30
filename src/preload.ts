@@ -9,8 +9,8 @@ interface CommandResult {
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
-  executeCommand: (command: string): Promise<void> =>
-    ipcRenderer.invoke('execute-command', command),
+  executeCommand: (command: string, workingDirectory?: string): Promise<void> =>
+    ipcRenderer.invoke('execute-command', command, workingDirectory),
   onCommandOutput: (callback: (line: string) => void): (() => void) => {
     const listener = (_event: any, line: string) => callback(line);
     ipcRenderer.on('command-output-line', listener);

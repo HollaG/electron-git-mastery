@@ -6,7 +6,7 @@ interface CommandResult {
 }
 
 interface ElectronAPI {
-  executeCommand: (command: string) => Promise<void>;
+  executeCommand: (command: string, workingDirectory?: string) => Promise<void>;
   onCommandOutput: (callback: (line: string) => void) => () => void;
   onCommandComplete: (callback: (result: CommandResult) => void) => () => void;
   selectFile: () => Promise<string | null>;
@@ -38,12 +38,16 @@ const setExePathBtn = document.getElementById('setExePath') as HTMLButtonElement
 const cwdPath = document.getElementById('cwdPath') as HTMLSpanElement;
 const customCommandInput = document.getElementById('customCommandInput') as HTMLInputElement;
 
+// Working directory state
+let currentWorkingDirectory: string = '';
+
 // ... (history array)
 
 // Initialize CWD display
 (async () => {
   try {
     const cwd = await window.electronAPI.getCwd();
+    currentWorkingDirectory = cwd;
     cwdPath.textContent = cwd;
     cwdPath.title = cwd;
   } catch (error) {
@@ -59,7 +63,7 @@ customCommandInput.addEventListener('keydown', async (e) => {
     if (command) {
       customCommandInput.disabled = true;
       try {
-        await executeCommand(command, { classList: { add: () => { }, remove: () => { } }, disabled: false } as any);
+        await handleCommand(command, { classList: { add: () => { }, remove: () => { } }, disabled: false } as any);
         customCommandInput.value = '';
       } finally {
         customCommandInput.disabled = false;
@@ -76,6 +80,9 @@ setWorkingDirBtn.addEventListener('click', async () => {
   try {
     const path = await window.electronAPI.selectFolder();
     if (path) {
+      // Update working directory state
+      currentWorkingDirectory = path;
+
       // Update CWD display
       cwdPath.textContent = path;
       cwdPath.title = path; // Show full path on hover
@@ -194,6 +201,77 @@ function addHistoryEntry(entry: HistoryEntry): void {
 
   // Scroll to top to show the latest entry
   historyContainer.scrollTop = 0;
+}
+
+// Parse cd command and update working directory
+function parseCdCommand(command: string): string | null {
+  const trimmed = command.trim();
+
+  // Match: cd <path> or cd "<path>"
+  const cdMatch = trimmed.match(/^cd\s+(.+)$/i);
+  if (!cdMatch) return null;
+
+  let targetPath = cdMatch[1].trim();
+
+  // Remove quotes if present
+  if ((targetPath.startsWith('"') && targetPath.endsWith('"')) ||
+    (targetPath.startsWith("'") && targetPath.endsWith("'"))) {
+    targetPath = targetPath.slice(1, -1);
+  }
+
+  return targetPath;
+}
+
+// Resolve path relative to current working directory
+function resolvePath(targetPath: string, basePath: string): string {
+  // Handle absolute paths (Windows: C:\... or \\... , Unix: /...)
+  if (/^[a-zA-Z]:\\/.test(targetPath) || targetPath.startsWith('\\\\') || targetPath.startsWith('/')) {
+    return targetPath;
+  }
+
+  // Handle relative paths
+  const parts = basePath.split(/[\\/]/);
+  const targetParts = targetPath.split(/[\\/]/);
+
+  for (const part of targetParts) {
+    if (part === '..') {
+      parts.pop();
+    } else if (part !== '.' && part !== '') {
+      parts.push(part);
+    }
+  }
+
+  return parts.join('\\');
+}
+
+// Handle command (intercept cd or execute normally)
+async function handleCommand(command: string, button: HTMLButtonElement): Promise<void> {
+  const cdPath = parseCdCommand(command);
+
+  if (cdPath !== null) {
+    // Handle cd command
+    const newPath = resolvePath(cdPath, currentWorkingDirectory);
+    currentWorkingDirectory = newPath;
+
+    // Update UI
+    cwdPath.textContent = newPath;
+    cwdPath.title = newPath;
+
+    // Add to history
+    const entry: HistoryEntry = {
+      command,
+      result: {
+        success: true,
+        output: `Changed directory to: ${newPath}`
+      },
+      timestamp: new Date()
+    };
+    history.push(entry);
+    addHistoryEntry(entry);
+  } else {
+    // Execute normal command
+    await executeCommand(command, button);
+  }
 }
 
 // Execute command with streaming output
@@ -334,8 +412,8 @@ async function executeCommand(command: string, button: HTMLButtonElement): Promi
   });
 
   try {
-    // Start the command execution
-    await window.electronAPI.executeCommand(command);
+    // Start the command execution with current working directory
+    await window.electronAPI.executeCommand(command, currentWorkingDirectory);
   } catch (error) {
     // Handle execution errors
     const currentOutput = output as HTMLPreElement | null;
@@ -453,8 +531,8 @@ commandButtons.forEach((button: HTMLButtonElement) => {
       // Execute setup with the provided input
       await executeCommandWithInput(command, directoryName, button);
     } else {
-      // Execute normal command
-      await executeCommand(command, button);
+      // Execute normal command (handleCommand will intercept cd if needed)
+      await handleCommand(command, button);
     }
   });
 });
