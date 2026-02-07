@@ -88,11 +88,11 @@ ipcMain.handle('execute-command', async (event, command: string, workingDirector
     let userInput: string | null = null;
     let baseCommand = command;
 
-    if (command.includes(':')) {
-      const parts = command.split(':');
-      baseCommand = parts[0];
-      userInput = parts.slice(1).join(':'); // In case input contains colons
-    }
+    // if (command.includes(':')) {
+    //   const parts = command.split(':');
+    //   baseCommand = parts[0];
+    //   userInput = parts.slice(1).join(':'); // In case input contains colons
+    // }
 
     // Determine executable path
     const exePath = customExePath || path.join(__dirname, '../gitmastery.exe');
@@ -126,11 +126,25 @@ ipcMain.handle('execute-command', async (event, command: string, workingDirector
 
     const executable = args.shift() || exePath;
 
+    // Properly quote arguments for PowerShell to handle special characters like ://
+    // This prevents URLs and paths with special chars from being truncated
+    const quotedArgs = args.map(arg => {
+      // If arg contains special characters that PowerShell might misinterpret, quote it
+      // if (arg.includes('://') || arg.includes('&') || arg.includes('|') || arg.includes(';')) {
+      //   // Escape any internal quotes and wrap in quotes
+      //   return `"${arg.replace(/"/g, '\\"')}"`;
+      // }
+      return arg;
+    });
+
+    console.log('Executable:', executable);
+    console.log('Quoted Args:', quotedArgs);
+
     // Use the provided working directory, fall back to customWorkingDir or undefined
     const cwd = workingDirectory || customWorkingDir || undefined;
 
     // Spawn the process
-    const childProcess = spawn(executable, args, {
+    const childProcess = spawn(executable, quotedArgs, {
       cwd,
       env: process.env,
       shell: true, // Use shell for Windows compatibility

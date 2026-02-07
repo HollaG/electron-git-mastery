@@ -37,6 +37,8 @@ const setWorkingDirBtn = document.getElementById('setWorkingDir') as HTMLButtonE
 const setExePathBtn = document.getElementById('setExePath') as HTMLButtonElement;
 const cwdPath = document.getElementById('cwdPath') as HTMLSpanElement;
 const customCommandInput = document.getElementById('customCommandInput') as HTMLInputElement;
+const downloadStartBtn = document.getElementById('downloadStart') as HTMLButtonElement;
+const verifyBtn = document.getElementById('verifyBtn') as HTMLButtonElement;
 
 // Working directory state
 let currentWorkingDirectory: string = '';
@@ -467,6 +469,12 @@ const modalInput = document.getElementById('modalInput') as HTMLInputElement;
 const modalSubmit = document.getElementById('modalSubmit') as HTMLButtonElement;
 const modalCancel = document.getElementById('modalCancel') as HTMLButtonElement;
 
+// Exercise modal elements
+const exerciseModal = document.getElementById('exerciseModal') as HTMLDivElement;
+const exerciseSelect = document.getElementById('exerciseSelect') as HTMLSelectElement;
+const exerciseDownload = document.getElementById('exerciseDownload') as HTMLButtonElement;
+const exerciseCancel = document.getElementById('exerciseCancel') as HTMLButtonElement;
+
 // Show modal and return promise with user input
 function showInputModal(title: string, prompt: string, defaultValue: string = ''): Promise<string | null> {
   return new Promise((resolve) => {
@@ -555,6 +563,41 @@ document.addEventListener('keydown', (event: KeyboardEvent) => {
     `;
     history.length = 0;
   }
+});
+
+// Download & Start button handler
+downloadStartBtn.addEventListener('click', () => {
+  exerciseSelect.value = '';
+  exerciseModal.classList.add('show');
+  exerciseSelect.focus();
+});
+
+// Exercise modal cancel handler
+exerciseCancel.addEventListener('click', () => {
+  exerciseModal.classList.remove('show');
+});
+
+// Exercise modal download handler
+exerciseDownload.addEventListener('click', async () => {
+  const selectedExercise = exerciseSelect.value;
+
+  if (!selectedExercise) {
+    alert('Please select an exercise first');
+    return;
+  }
+
+  // Close the modal
+  exerciseModal.classList.remove('show');
+
+  // Execute the download command in the user's working directory
+  const command = `gitmastery download ${selectedExercise}`;
+  await handleCommand(command, downloadStartBtn);
+});
+
+// Verify button handler
+verifyBtn.addEventListener('click', async () => {
+  const command = 'gitmastery verify';
+  await handleCommand(command, verifyBtn);
 });
 
 

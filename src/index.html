@@ -22,6 +22,24 @@
       </h1>
       <p class="subtitle">Execute commands with ease</p>
 
+      <div class="action-buttons">
+        <button id="downloadStart" class="action-btn download-btn" title="Download & Start Exercise">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download & Start</span>
+        </button>
+
+        <button id="verifyBtn" class="action-btn verify-btn" title="Verify Exercise">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>Verify</span>
+        </button>
+      </div>
+
       <div class="config-buttons">
         <button id="setWorkingDir" class="config-btn" title="Set Working Directory">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -153,6 +171,55 @@
         <div class="modal-buttons">
           <button id="modalSubmit" class="modal-btn submit-btn">Submit</button>
           <button id="modalCancel" class="modal-btn cancel-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal for exercise selection -->
+    <div id="exerciseModal" class="modal">
+      <div class="modal-content">
+        <h3>Download & Start Exercise</h3>
+        <p>Select an exercise to download:</p>
+        <select id="exerciseSelect" class="exercise-select">
+          <option value="">-- Select Exercise --</option>
+          <option value="under-control">under-control</option>
+          <option value="undo-init">undo-init</option>
+          <option value="stage-fright">stage-fright</option>
+          <option value="staging-intervention">staging-intervention</option>
+          <option value="grocery-shopping">grocery-shopping</option>
+          <option value="log-and-order">log-and-order</option>
+          <option value="remote-control">remote-control</option>
+          <option value="link-me">link-me</option>
+          <option value="push-over">push-over</option>
+          <option value="ignoring-somethings">ignoring-somethings</option>
+          <option value="fork-repo">fork-repo</option>
+          <option value="clone-repo">clone-repo</option>
+          <option value="fetch-and-pull">fetch-and-pull</option>
+          <option value="view-commits">view-commits</option>
+          <option value="tags-add">tags-add</option>
+          <option value="tags-update">tags-update</option>
+          <option value="tags-push">tags-push</option>
+          <option value="sensors-diff">sensors-diff</option>
+          <option value="sensors-checkout">sensors-checkout</option>
+          <option value="sensors-reset">sensors-reset</option>
+          <option value="sensors-revert">sensors-revert</option>
+          <option value="side-track">side-track</option>
+          <option value="branch-previous">branch-previous</option>
+          <option value="branch-compare">branch-compare</option>
+          <option value="branch-bender">branch-bender</option>
+          <option value="branch-forward">branch-forward</option>
+          <option value="merge-undo">merge-undo</option>
+          <option value="ff-undo">ff-undo</option>
+          <option value="merge-squash">merge-squash</option>
+          <option value="conflict-mediator">conflict-mediator</option>
+          <option value="branch-rename">branch-rename</option>
+          <option value="branch-delete">branch-delete</option>
+          <option value="mix-messy-docs">mix-messy-docs</option>
+          <option value="mix-messy-graph">mix-messy-graph</option>
+        </select>
+        <div class="modal-buttons">
+          <button id="exerciseDownload" class="modal-btn submit-btn">Download</button>
+          <button id="exerciseCancel" class="modal-btn cancel-btn">Cancel</button>
         </div>
       </div>
     </div>
