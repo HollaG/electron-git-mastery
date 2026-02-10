@@ -29,4 +29,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('select-folder'),
   getCwd: (): Promise<string> =>
     ipcRenderer.invoke('get-cwd'),
+  getPlatform: (): Promise<string> =>
+    ipcRenderer.invoke('get-platform'),
+  checkGitMasteryInstalled: (): Promise<boolean> =>
+    ipcRenderer.invoke('check-gitmastery-installed'),
+  installGitMastery: (): Promise<void> =>
+    ipcRenderer.invoke('install-gitmastery'),
 });

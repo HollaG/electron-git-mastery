@@ -12,6 +12,9 @@ interface ElectronAPI {
   selectFile: () => Promise<string | null>;
   selectFolder: () => Promise<string | null>;
   getCwd: () => Promise<string>;
+  getPlatform: () => Promise<string>;
+  checkGitMasteryInstalled: () => Promise<boolean>;
+  installGitMastery: () => Promise<void>;
 }
 
 declare global {
@@ -35,6 +38,7 @@ const historyContainer = document.getElementById('history') as HTMLDivElement;
 const commandButtons = document.querySelectorAll('.cmd-button') as NodeListOf<HTMLButtonElement>;
 const setWorkingDirBtn = document.getElementById('setWorkingDir') as HTMLButtonElement;
 const setExePathBtn = document.getElementById('setExePath') as HTMLButtonElement;
+const installGitMasteryBtn = document.getElementById('installGitMastery') as HTMLButtonElement;
 const cwdPath = document.getElementById('cwdPath') as HTMLSpanElement;
 const customCommandInput = document.getElementById('customCommandInput') as HTMLInputElement;
 const downloadStartBtn = document.getElementById('downloadStart') as HTMLButtonElement;
@@ -43,17 +47,39 @@ const verifyBtn = document.getElementById('verifyBtn') as HTMLButtonElement;
 // Working directory state
 let currentWorkingDirectory: string = '';
 
+// Platform state
+let currentPlatform: string = '';
+let isGitMasteryInstalled: boolean = false;
+
 // ... (history array)
 
-// Initialize CWD display
+// Initialize CWD display and platform detection
 (async () => {
   try {
+    // Get current working directory
     const cwd = await window.electronAPI.getCwd();
     currentWorkingDirectory = cwd;
     cwdPath.textContent = cwd;
     cwdPath.title = cwd;
+
+    // Get platform
+    currentPlatform = await window.electronAPI.getPlatform();
+
+    // Check if gitmastery is installed
+    isGitMasteryInstalled = await window.electronAPI.checkGitMasteryInstalled();
+
+    // Show/hide UI elements based on platform
+    if (currentPlatform === 'darwin') {
+      // On macOS, hide "Set Executable Path" button and show "Install GitMastery" button
+      if (setExePathBtn) setExePathBtn.style.display = 'none';
+      if (installGitMasteryBtn) installGitMasteryBtn.style.display = 'flex';
+    } else {
+      // On Windows, show "Set Executable Path" button and hide "Install GitMastery" button
+      if (setExePathBtn) setExePathBtn.style.display = 'flex';
+      if (installGitMasteryBtn) installGitMasteryBtn.style.display = 'none';
+    }
   } catch (error) {
-    console.error('Failed to get CWD:', error);
+    console.error('Failed to initialize:', error);
     cwdPath.textContent = 'Error fetching CWD';
   }
 })();
@@ -135,6 +161,167 @@ setExePathBtn.addEventListener('click', async () => {
     setExePathBtn.disabled = false;
   }
 });
+
+// Install GitMastery button handler (macOS only)
+if (installGitMasteryBtn) {
+  installGitMasteryBtn.addEventListener('click', async () => {
+    installGitMasteryBtn.disabled = true;
+    installGitMasteryBtn.classList.add('loading');
+
+    // Create initial history entry
+    const entry: HistoryEntry = {
+      command: 'Install GitMastery via Homebrew',
+      result: {
+        success: true,
+        output: '',
+      },
+      timestamp: new Date(),
+    };
+
+    history.push(entry);
+    clearEmptyState();
+
+    // Create and add the entry element
+    const entryDiv = document.createElement('div');
+    entryDiv.className = 'history-entry success';
+
+    const header = document.createElement('div');
+    header.className = 'entry-header';
+
+    const commandSpan = document.createElement('div');
+    commandSpan.className = 'entry-command';
+
+    const commandText = document.createTextNode(`$ ${entry.command}`);
+    commandSpan.appendChild(commandText);
+
+    const inlineSpinner = document.createElement('div');
+    inlineSpinner.className = 'spinner-inline';
+    commandSpan.appendChild(inlineSpinner);
+
+    const timestamp = document.createElement('div');
+    timestamp.className = 'entry-timestamp';
+    timestamp.textContent = formatTimestamp(entry.timestamp);
+
+    header.appendChild(commandSpan);
+    header.appendChild(timestamp);
+
+    const loadingContainer = document.createElement('div');
+    loadingContainer.className = 'loading-container';
+
+    const spinner = document.createElement('div');
+    spinner.className = 'spinner';
+
+    const loadingText = document.createElement('span');
+    loadingText.textContent = 'Installing GitMastery via Homebrew...';
+
+    loadingContainer.appendChild(spinner);
+    loadingContainer.appendChild(loadingText);
+
+    entryDiv.appendChild(header);
+    entryDiv.appendChild(loadingContainer);
+
+    historyContainer.insertBefore(entryDiv, historyContainer.firstChild);
+    historyContainer.scrollTop = 0;
+
+    let output: HTMLPreElement | null = null;
+    let hasReceivedOutput: boolean = false;
+
+    // Set up streaming listeners
+    const cleanupOutput = window.electronAPI.onCommandOutput((line: string) => {
+      if (!hasReceivedOutput) {
+        hasReceivedOutput = true;
+        loadingContainer.remove();
+
+        output = document.createElement('pre');
+        output.className = 'entry-output';
+        output.textContent = line;
+        entryDiv.appendChild(output);
+      } else if (output) {
+        output.textContent += '\n' + line;
+      }
+
+      if (output) {
+        output.scrollTop = output.scrollHeight;
+      }
+    });
+
+    const cleanupComplete = window.electronAPI.onCommandComplete(async (result: CommandResult) => {
+      entry.result = result;
+      inlineSpinner.remove();
+
+      if (!hasReceivedOutput) {
+        loadingContainer.remove();
+
+        output = document.createElement('pre');
+        output.className = `entry-output ${result.success ? '' : 'error'}`;
+
+        if (result.success) {
+          output.textContent = result.output || 'GitMastery installed successfully';
+        } else {
+          output.textContent = result.error || result.output || 'Installation failed';
+        }
+
+        entryDiv.appendChild(output);
+      } else if (output) {
+        output.className = `entry-output ${result.success ? '' : 'error'}`;
+
+        if (!result.success && result.error) {
+          if (output.textContent) {
+            output.textContent += '\n\n' + result.error;
+          } else {
+            output.textContent = result.error;
+          }
+        }
+      }
+
+      entryDiv.className = `history-entry ${result.success ? 'success' : 'error'}`;
+
+      // Update installation status
+      if (result.success) {
+        isGitMasteryInstalled = true;
+      }
+
+      installGitMasteryBtn.classList.remove('loading');
+      installGitMasteryBtn.disabled = false;
+
+      cleanupOutput();
+      cleanupComplete();
+    });
+
+    try {
+      await window.electronAPI.installGitMastery();
+    } catch (error) {
+      const currentOutput = output as HTMLPreElement | null;
+      const errorResult: CommandResult = {
+        success: false,
+        output: currentOutput?.textContent || '',
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+
+      entry.result = errorResult;
+      entryDiv.className = 'history-entry error';
+      inlineSpinner.remove();
+
+      if (!hasReceivedOutput) {
+        loadingContainer.remove();
+
+        output = document.createElement('pre');
+        output.className = 'entry-output error';
+        output.textContent = errorResult.error || 'Unknown error';
+        entryDiv.appendChild(output);
+      } else if (currentOutput) {
+        currentOutput.className = 'entry-output error';
+        currentOutput.textContent += '\n\n' + (errorResult.error || 'Unknown error');
+      }
+
+      installGitMasteryBtn.classList.remove('loading');
+      installGitMasteryBtn.disabled = false;
+
+      cleanupOutput();
+      cleanupComplete();
+    }
+  });
+}
 
 
 // ... (rest of the file)
@@ -226,14 +413,19 @@ function parseCdCommand(command: string): string | null {
 
 // Resolve path relative to current working directory
 function resolvePath(targetPath: string, basePath: string): string {
+  // Determine the path separator based on the base path
+  // If basePath contains forward slashes, use forward slashes (Unix/macOS)
+  // Otherwise use backslashes (Windows)
+  const separator = basePath.includes('/') ? '/' : '\\';
+
   // Handle absolute paths (Windows: C:\... or \\... , Unix: /...)
   if (/^[a-zA-Z]:\\/.test(targetPath) || targetPath.startsWith('\\\\') || targetPath.startsWith('/')) {
     return targetPath;
   }
 
   // Handle relative paths
-  const parts = basePath.split(/[\\/]/);
-  const targetParts = targetPath.split(/[\\/]/);
+  const parts = basePath.split(/[\\\/]/);
+  const targetParts = targetPath.split(/[\\\/]/);
 
   for (const part of targetParts) {
     if (part === '..') {
@@ -243,7 +435,7 @@ function resolvePath(targetPath: string, basePath: string): string {
     }
   }
 
-  return parts.join('\\');
+  return parts.join(separator);
 }
 
 // Handle command (intercept cd or execute normally)
@@ -383,7 +575,15 @@ async function executeCommand(command: string, button: HTMLButtonElement): Promi
       if (result.success) {
         output.textContent = result.output || 'Command completed successfully';
       } else {
-        output.textContent = result.error || result.output || 'Command failed';
+        let errorText = result.error || result.output || 'Command failed';
+
+        // On macOS, if gitmastery is not found, add helpful message
+        if (currentPlatform === 'darwin' && !isGitMasteryInstalled &&
+          (errorText.includes('Permission denied') || errorText.includes('command not found') || errorText.includes('not found'))) {
+          errorText += '\n\n💡 GitMastery is not installed. Click the "Install GitMastery" button in the config section to install via Homebrew.';
+        }
+
+        output.textContent = errorText;
       }
 
       entryDiv.appendChild(output);
@@ -393,10 +593,18 @@ async function executeCommand(command: string, button: HTMLButtonElement): Promi
 
       // If there was an error message, append it
       if (!result.success && result.error) {
+        let errorText = result.error;
+
+        // On macOS, if gitmastery is not found, add helpful message
+        if (currentPlatform === 'darwin' && !isGitMasteryInstalled &&
+          (errorText.includes('Permission denied') || errorText.includes('command not found') || errorText.includes('not found'))) {
+          errorText += '\n\n💡 GitMastery is not installed. Click the "Install GitMastery" button in the config section to install via Homebrew.';
+        }
+
         if (output.textContent) {
-          output.textContent += '\n\n' + result.error;
+          output.textContent += '\n\n' + errorText;
         } else {
-          output.textContent = result.error;
+          output.textContent = errorText;
         }
       }
     }

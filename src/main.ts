@@ -53,6 +53,135 @@ app.on('window-all-closed', () => {
 let customExePath: string | null = null;
 let customWorkingDir: string | null = null;
 
+// Helper function to get the correct gitmastery executable based on platform
+function getGitMasteryExecutable(): string {
+  if (customExePath) {
+    return customExePath;
+  }
+
+  if (process.platform === 'darwin') {
+    // On macOS, use Homebrew-installed gitmastery
+    return 'gitmastery';
+  } else {
+    // On Windows, use bundled executable
+    return path.join(__dirname, '../gitmastery.exe');
+  }
+}
+
+// IPC Handler to get current platform
+ipcMain.handle('get-platform', () => {
+  return process.platform;
+});
+
+// IPC Handler to check if gitmastery is installed
+ipcMain.handle('check-gitmastery-installed', async (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (process.platform === 'darwin') {
+      // On macOS, check if gitmastery is in PATH
+      const checkProcess = spawn('which', ['gitmastery'], {
+        shell: true,
+      });
+
+      checkProcess.on('close', (code: number | null) => {
+        resolve(code === 0);
+      });
+
+      checkProcess.on('error', () => {
+        resolve(false);
+      });
+    } else {
+      // On Windows, check if exe exists
+      const exePath = customExePath || path.join(__dirname, '../gitmastery.exe');
+      const fs = require('fs');
+      resolve(fs.existsSync(exePath));
+    }
+  });
+});
+
+// IPC Handler to install gitmastery via Homebrew (macOS only)
+ipcMain.handle('install-gitmastery', async (event): Promise<void> => {
+  return new Promise((resolve) => {
+    if (process.platform !== 'darwin') {
+      event.sender.send('command-complete', {
+        success: false,
+        output: '',
+        error: 'Installation via Homebrew is only available on macOS',
+      });
+      resolve();
+      return;
+    }
+
+    // Run Homebrew installation commands
+    const installCommand = 'brew tap git-mastery/gitmastery && brew install gitmastery';
+
+    const installProcess = spawn(installCommand, [], {
+      shell: true,
+      env: process.env,
+    });
+
+    let stdoutBuffer = '';
+    let stderrBuffer = '';
+    let hasError = false;
+
+    installProcess.stdout?.on('data', (data: Buffer) => {
+      const text = data.toString('utf8');
+      stdoutBuffer += text;
+
+      const lines = stdoutBuffer.split(/\r?\n/);
+      stdoutBuffer = lines.pop() || '';
+
+      lines.forEach(line => {
+        if (line) {
+          event.sender.send('command-output-line', line);
+        }
+      });
+    });
+
+    installProcess.stderr?.on('data', (data: Buffer) => {
+      const text = data.toString('utf8');
+      stderrBuffer += text;
+
+      const lines = stderrBuffer.split(/\r?\n/);
+      stderrBuffer = lines.pop() || '';
+
+      lines.forEach(line => {
+        if (line) {
+          event.sender.send('command-output-line', line);
+        }
+      });
+    });
+
+    installProcess.on('error', (error: Error) => {
+      hasError = true;
+      event.sender.send('command-complete', {
+        success: false,
+        output: stdoutBuffer + stderrBuffer,
+        error: `Failed to install gitmastery: ${error.message}`,
+      });
+      resolve();
+    });
+
+    installProcess.on('close', (code: number | null) => {
+      if (stdoutBuffer) {
+        event.sender.send('command-output-line', stdoutBuffer);
+      }
+      if (stderrBuffer) {
+        event.sender.send('command-output-line', stderrBuffer);
+      }
+
+      if (!hasError) {
+        const success = code === 0;
+        event.sender.send('command-complete', {
+          success,
+          output: success ? 'GitMastery installed successfully via Homebrew' : `Installation failed with code ${code}`,
+          error: success ? undefined : `Exit code: ${code}`,
+        });
+      }
+      resolve();
+    });
+  });
+});
+
 // IPC Handlers for dialogs
 ipcMain.handle('select-file', async () => {
   if (!mainWindow) return null;
@@ -95,7 +224,7 @@ ipcMain.handle('execute-command', async (event, command: string, workingDirector
     // }
 
     // Determine executable path
-    const exePath = customExePath || path.join(__dirname, '../gitmastery.exe');
+    const exePath = getGitMasteryExecutable();
 
     // Parse command into executable and args
     // Replace 'gitmastery' with the path to the exe
