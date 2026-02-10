@@ -371,7 +371,27 @@ function createHistoryEntry(entry: HistoryEntry): HTMLDivElement {
   return entryDiv;
 }
 
-// Clear empty state
+// Parse output line for cd command suggestions from gitmastery
+function parseOutputForCd(line: string): string | null {
+  // Match patterns like:
+  // "INFO  cd staging-intervention/intervention"
+  // "cd staging-intervention/intervention"
+  // " INFO  cd path/to/dir"
+  const cdMatch = line.match(/(?:INFO\s+)?cd\s+(.+?)$/i);
+  if (!cdMatch) return null;
+
+  let targetPath = cdMatch[1].trim();
+
+  // Remove quotes if present
+  if ((targetPath.startsWith('"') && targetPath.endsWith('"')) ||
+    (targetPath.startsWith("'") && targetPath.endsWith("'"))) {
+    targetPath = targetPath.slice(1, -1);
+  }
+
+  return targetPath;
+}
+
+// Parse cd command and update working directory
 function clearEmptyState(): void {
   const emptyState = historyContainer.querySelector('.empty-state');
   if (emptyState) {
@@ -538,6 +558,21 @@ async function executeCommand(command: string, button: HTMLButtonElement): Promi
 
   // Set up streaming listeners
   const cleanupOutput = window.electronAPI.onCommandOutput((line: string) => {
+    // Check if this line contains a cd command suggestion
+    const cdPath = parseOutputForCd(line);
+    if (cdPath !== null) {
+      // Automatically change directory
+      const newPath = resolvePath(cdPath, currentWorkingDirectory);
+      currentWorkingDirectory = newPath;
+
+      // Update UI
+      cwdPath.textContent = newPath;
+      cwdPath.title = newPath;
+
+      // Add visual indicator in the output (optional - you can remove this if you don't want it)
+      line = line + ' ✓ (auto-changed directory)';
+    }
+
     // On first output, replace loading container with output element
     if (!hasReceivedOutput) {
       hasReceivedOutput = true;
