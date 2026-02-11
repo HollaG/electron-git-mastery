@@ -25,8 +25,10 @@ function createWindow(): void {
 
   mainWindow.loadFile(path.join(__dirname, '../src/index.html'));
 
-  // Open DevTools in development
-  mainWindow.webContents.openDevTools();
+  // Open DevTools in development only
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -66,6 +68,46 @@ function getGitMasteryExecutable(): string {
     // On Windows, use bundled executable
     return path.join(__dirname, '../gitmastery.exe');
   }
+}
+
+// Helper function to get environment with Homebrew paths added
+function getEnvironmentWithHomebrew(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+
+  if (process.platform === 'darwin') {
+    // On macOS, add common Homebrew paths to PATH
+    const homebrewPaths = [
+      '/opt/homebrew/bin',      // Apple Silicon Macs
+      '/usr/local/bin',         // Intel Macs
+      '/opt/homebrew/sbin',
+      '/usr/local/sbin'
+    ];
+
+    // Standard system paths that should always be included
+    const systemPaths = [
+      '/usr/bin',
+      '/bin',
+      '/usr/sbin',
+      '/sbin'
+    ];
+
+    // Get current PATH or use system paths as fallback
+    const currentPath = env.PATH || systemPaths.join(':');
+
+    // Combine Homebrew paths with current PATH
+    // Put Homebrew paths first so they take precedence
+    const allPaths = [...homebrewPaths, ...currentPath.split(':')];
+
+    // Remove duplicates while preserving order
+    const uniquePaths = Array.from(new Set(allPaths)).filter(p => p.length > 0);
+
+    env.PATH = uniquePaths.join(':');
+
+    // Debug logging to help diagnose PATH issues
+    console.log('Enhanced PATH for macOS:', env.PATH);
+  }
+
+  return env;
 }
 
 // IPC Handler to get current platform
@@ -116,7 +158,7 @@ ipcMain.handle('install-gitmastery', async (event): Promise<void> => {
 
     const installProcess = spawn(installCommand, [], {
       shell: true,
-      env: process.env,
+      env: getEnvironmentWithHomebrew(),
     });
 
     let stdoutBuffer = '';
@@ -214,14 +256,21 @@ ipcMain.handle('get-cwd', () => {
 ipcMain.handle('execute-command', async (event, command: string, workingDirectory?: string): Promise<void> => {
   return new Promise((resolve) => {
     // Check if command has input (format: "command:input")
+    // Only parse input for specific interactive commands to avoid breaking URLs with colons
     let userInput: string | null = null;
     let baseCommand = command;
 
-    // if (command.includes(':')) {
-    //   const parts = command.split(':');
-    //   baseCommand = parts[0];
-    //   userInput = parts.slice(1).join(':'); // In case input contains colons
-    // }
+    // List of commands that expect stdin input
+    const interactiveCommands = ['gitmastery setup'];
+
+    // Check if this is an interactive command that needs input
+    const isInteractiveCommand = interactiveCommands.some(cmd => command.startsWith(cmd + ':'));
+
+    if (isInteractiveCommand && command.includes(':')) {
+      const colonIndex = command.indexOf(':');
+      baseCommand = command.substring(0, colonIndex);
+      userInput = command.substring(colonIndex + 1); // Everything after the first colon
+    }
 
     // Determine executable path
     const exePath = getGitMasteryExecutable();
@@ -275,7 +324,7 @@ ipcMain.handle('execute-command', async (event, command: string, workingDirector
     // Spawn the process
     const childProcess = spawn(executable, quotedArgs, {
       cwd,
-      env: process.env,
+      env: getEnvironmentWithHomebrew(),
       shell: true, // Use shell for Windows compatibility
     });
 
