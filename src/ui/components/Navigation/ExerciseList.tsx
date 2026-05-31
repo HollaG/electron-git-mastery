@@ -239,7 +239,7 @@ export const ExerciseList = () => {
     <Stack w="100%">
       <Flex justify={'space-between'} align={'center'} w="100%">
 
-        <Text variant="subheading" style={{ flexGrow: 1 }}> Lessons </Text>
+        <Text variant="subheading" className="grow"> Lessons </Text>
         <ActionIcon size="xs">
           <IconPlus onClick={onAddSelectedClicked} />
         </ActionIcon>
@@ -279,7 +279,7 @@ export const DownloadedExercise = ({ exercise, status }: { exercise: Exercise, s
   const { navigate } = useWebContentsView();
   const { startExercise } = useActivity();
 
-  return <Flex style={{ width: "100%", alignItems: 'center' }}>
+  return <Flex className="w-full items-center">
     {statusMap[status as keyof typeof statusMap]()}
     <NavigationButton title={exercise.identifier} onClick={() => {
       navigate(buildExerciseUrl(exercise));
@@ -292,37 +292,19 @@ export const DownloadedExercise = ({ exercise, status }: { exercise: Exercise, s
 
 
 const InProgress = () => {
-  return <Box style={{
-    backgroundColor: "var(--mantine-color-yellow-5)",
-    borderRadius: "var(--mantine-radius-default)",
-    // padding: "var(--mantine-spacing-md)",
-    width: "12px",
-    height: '12px'
-  }}>
+  return <Box bg="yellow.5" className="w-3 h-3 rounded">
 
   </Box>
 }
 
 const Correct = () => {
-  return <Box style={{
-    backgroundColor: "var(--mantine-color-green-5)",
-    borderRadius: "var(--mantine-radius-default)",
-    // padding: "var(--mantine-spacing-md)",
-    width: "12px",
-    height: '12px'
-  }}>
+  return <Box bg="green.5" className="w-3 h-3 rounded">
 
   </Box>
 }
 
 const Incorrect = () => {
-  return <Box style={{
-    backgroundColor: "var(--mantine-color-red-5)",
-    borderRadius: "var(--mantine-radius-default)",
-    // padding: "var(--mantine-spacing-md)",
-    width: "12px",
-    height: '12px'
-  }}>
+  return <Box bg="red.5" className="w-3 h-3 rounded">
 
   </Box>
 }

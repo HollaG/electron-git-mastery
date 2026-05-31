@@ -50,24 +50,8 @@ export const Onboarding = ({ onCompleteOnboarding }: { onCompleteOnboarding: () 
     }
   }
 
-  return <Flex bg="gm-bone" style={{
-
-    width: "100%",
-    height: "100vh",
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "column",
-    gap: '2rem'
-
-  }}>
-    <Flex style={{
-      justifyContent: "center",
-      alignItems: "center",
-      flexDirection: "column",
-      gap: '2rem',
-      width: "30%",
-      minWidth: "800px"
-    }}>
+  return <Flex bg="gm-bone" className="w-full h-screen justify-center items-center flex-col gap-8">
+    <Flex className="justify-center items-center flex-col gap-8 w-[30%] min-w-[800px]">
       {active != 0 &&
         <Stepper active={active} onStepClick={setActive} allowNextStepsSelect={false}
           styles={{
@@ -80,9 +64,7 @@ export const Onboarding = ({ onCompleteOnboarding }: { onCompleteOnboarding: () 
               paddingBottom: "4rem"
             }
           }}
-          style={{
-            width: "100%"
-          }}
+          className="w-full"
         >
           <Stepper.Step label={active == 0 ? "Overview" : "Start"} description={active == 0 ? "Welcome to GitMastery!" : ""}>
             <Step0 />
@@ -113,10 +95,7 @@ export const Onboarding = ({ onCompleteOnboarding }: { onCompleteOnboarding: () 
 
 const Step0 = () => {
   return <Group align="center" justify="center" gap="2rem">
-    <Box style={{
-      width: "128px",
-      height: "128px"
-    }}>
+    <Box className="w-32 h-32">
 
 
       <Image width={128} height={128} src={logo} alt="Git Mastery Logo" />
@@ -321,7 +300,7 @@ const Step2 = ({
     <Accordion variant="separated" >
       <Accordion.Item key="iframe" value="iframe">
         <Accordion.Control icon={<IconGitBranch size={12} />}>Installation help</Accordion.Control>
-        <Accordion.Panel><iframe src="https://git-mastery.org/companion-app/index.html#1-setting-up-git" style={{ "width": "100%", height: "500px" }}> </iframe></Accordion.Panel>
+        <Accordion.Panel><iframe src="https://git-mastery.org/companion-app/index.html#1-setting-up-git" className="w-full h-[500px]"> </iframe></Accordion.Panel>
       </Accordion.Item>
     </Accordion>
 
@@ -501,9 +480,9 @@ const Step3 = ({
 
   let statusComponent = <></>
   if (versionData?.latest && versionData.version !== versionData.latest) {
-    statusComponent = <Group gap={"6px"}> <IconAlertCircle color="yellow" /> <Text style={{ lineHeight: 'normal' }}>{`Update available ${versionData.version} —> ${versionData.latest}`}</Text> </Group>
+    statusComponent = <Group gap={"6px"}> <IconAlertCircle color="yellow" /> <Text className="leading-normal">{`Update available ${versionData.version} —> ${versionData.latest}`}</Text> </Group>
   } else if (versionData?.version) {
-    statusComponent = <Group gap={"6px"}> <IconCircleCheck color="green" /> <Text style={{ lineHeight: 'normal' }}>{`Version ${versionData.version}`}</Text> </Group>
+    statusComponent = <Group gap={"6px"}> <IconCircleCheck color="green" /> <Text className="leading-normal">{`Version ${versionData.version}`}</Text> </Group>
   } else {
     statusComponent = <IconCircleX color="red" />
   }
@@ -539,7 +518,7 @@ const Step3 = ({
     <Accordion variant="separated" >
       <Accordion.Item key="iframe" value="iframe">
         <Accordion.Control icon={<IconGitBranch size={12} />}>Installation help</Accordion.Control>
-        <Accordion.Panel><iframe src="https://git-mastery.org/companion-app/index.html#1-setting-up-git" style={{ "width": "100%", height: "500px" }}> </iframe></Accordion.Panel>
+        <Accordion.Panel><iframe src="https://git-mastery.org/companion-app/index.html#1-setting-up-git" className="w-full h-[500px]"> </iframe></Accordion.Panel>
       </Accordion.Item>
     </Accordion>
 
@@ -551,8 +530,8 @@ const Step3 = ({
 const Step4 = () => {
   return <Stack gap={"lg"}>
     {/* <Title style={{ textAlign: "center" }} order={1}> Setup complete </Title> */}
-    <Center style={{ margin: "1.5rem" }}>
-      <Alert style={{ transform: "scale(1.5)" }} variant="outline" color="gm-green" title="Setup complete" icon={<IconCheck />}>
+    <Center className="m-6">
+      <Alert className="scale-150" variant="outline" color="gm-green" title="Setup complete" icon={<IconCheck />}>
         You are now ready to use GitMastery!
       </Alert>
     </Center></Stack>

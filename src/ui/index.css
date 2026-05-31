@@ -1,13 +1,12 @@
-/* ─── Typography ─────────────────────────────────────────── */
-:root {
-  --font-heading: 'Noto Serif', Georgia, serif;
-  --font-body: 'Inter', system-ui, sans-serif;
-}
+@layer theme, base, mantine, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities);
 
-body {
-  font-family: var(--font-body);
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading);
+@theme {
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-heading: "Noto Serif", Georgia, serif;
+  --color-gm-green: #2D864E;
+  --color-gm-bone: #F8F8F8;
+  --color-gm-dark-green: #717c4d;
 }

@@ -13,10 +13,7 @@ export const LeftBarWrapper = () => {
   })
   return <Stack h="100%" >
     {/* Tours */}
-    <Stack style={{
-      overflowY: "scroll",
-
-    }}>
+    <Stack className="overflow-y-scroll">
 
       <TourList />
 
@@ -27,13 +24,13 @@ export const LeftBarWrapper = () => {
       </Flex>
 
     </Stack>
-    <Flex style={{ flexGrow: 1 }}>
+    <Flex className="grow">
 
     </Flex>
 
     {/* User profile (fixed)*/}
     <Divider />
-    <Flex style={{ flexShrink: 0, }} w="100%">
+    <Flex className="shrink-0" w="100%">
 
       <Menu shadow="md" width={200}>
         <Menu.Target>
@@ -85,11 +82,10 @@ const UserButton = forwardRef<HTMLButtonElement, UserButtonProps>(
   ({ image, name, email, icon, ...others }: UserButtonProps, ref) => (
     <UnstyledButton
       ref={ref}
+      className="p-0 w-full"
       style={{
-        padding: '0px',
         color: 'var(--mantine-color-text)',
         borderRadius: 'var(--mantine-radius-sm)',
-        width: "100%"
       }}
       {...others}
 
@@ -97,7 +93,7 @@ const UserButton = forwardRef<HTMLButtonElement, UserButtonProps>(
       <Group>
         <Avatar src={image} radius="xl" />
 
-        <div style={{ flex: 1 }}>
+        <div className="flex-1">
           <Text size="sm" fw={500}>
             {name}
           </Text>

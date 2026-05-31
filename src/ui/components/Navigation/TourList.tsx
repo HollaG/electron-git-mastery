@@ -5,7 +5,6 @@ import { useCustomQuery } from "../../hooks/query/useCustomQuery"
 import { buildLessonUrl, useWebContentsView } from "../../context/useWebContentsView"
 import { IconChevronCompactDown, IconChevronDown } from "@tabler/icons-react"
 
-import classes from './TourList.module.css'
 import { NavigationButton } from "./NavigationButton/NavigationButton"
 
 export const TourList = () => {
@@ -44,11 +43,9 @@ const TourItem = ({ tour, index }: { tour: Tour, index: number }) => {
 
         } >
         <Flex gap={4} align="center">
-          <Box style={{ flexShrink: 0 }}>
+          <Box className="shrink-0">
 
-            <IconChevronDown className={classes['icon']} style={{
-              transform: opened ? "rotate(180deg)" : "none"
-            }} size={12} />
+            <IconChevronDown className={`transition-all duration-150 ease-in-out ${opened ? "rotate-180" : ""}`} size={12} />
           </Box>
           {tour.title}
         </Flex>
