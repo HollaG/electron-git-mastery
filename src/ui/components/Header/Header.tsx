@@ -6,15 +6,10 @@ export const Header = () => {
 
   const { getActivityText, isDoingActivity, endActivity, verifyExercise } = useActivity()
 
-  return <SimpleGrid cols={3} p="md" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: '64px' }}>
+  return <SimpleGrid cols={3} p="md" className="flex items-center justify-between h-16">
     <Title order={4}> GitMastery </Title>
     <Box >
-      {isDoingActivity && <Flex px="md" bg="gm-green" w="100%" h="100%" gap={"lg"} style={{
-        borderRadius: "24px",
-        paddingTop: "2px",
-        paddingBottom: "2px"
-
-      }}>
+      {isDoingActivity && <Flex px="md" bg="gm-green" w="100%" h="100%" gap={"lg"} className="rounded-3xl py-0.5">
         <Center>
 
           <Button size="sm" variant="subtle" c="white" onClick={() => endActivity()} >Quit</Button>

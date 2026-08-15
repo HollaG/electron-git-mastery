@@ -1,7 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css';
+import './index.css';
+import '@mantine/core/styles.layer.css';
+import '@mantine/notifications/styles.layer.css';
 import App from './App.tsx'
 import { colorsTuple, createTheme, MantineProvider, Text } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

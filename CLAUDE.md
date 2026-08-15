@@ -35,6 +35,8 @@ Git-Mastery Desktop is an Electron app that provides an interactive learning env
 
 **Renderer process** (`src/ui/`): React 19 + Mantine v8 app that loads from `http://localhost:5123` in dev or `dist-react/` in prod. Communicates with the main process exclusively via the context bridge exposed as `window.electron`.
 
+**Styling**: Mantine components/props plus TailwindCSS v4 utility classes. Tailwind is configured CSS-first (no `tailwind.config.js`) via the `@tailwindcss/postcss` plugin in `postcss.config.cjs`. The entry stylesheet `src/ui/index.css` declares the cascade order `@layer theme, base, mantine, components, utilities;`, and `main.tsx` imports Mantine's `*.layer.css` variants so Tailwind's preflight reset never overrides Mantine. Prefer Tailwind `className` over inline `style={{}}` for layout; keep Mantine props (`bg`/`p`/`w`/`h`/`styles`). See `docs/development/styling.md`.
+
 **Context bridge** (`src/electron/preload.cts`): Typed API wrapping all IPC channels. The renderer never calls `ipcRenderer` directly. All handler types live in `src/electron/preload.cts` and are referenced from `src/ui/` via `window.electron.*`.
 
 **WebContentsView** (`src/electron/ipc/webContentsView.ts`): Separate sandboxed view (not the main BrowserWindow) for displaying git-mastery.org. Has its own preload (`wcv-preload.cts`). Injected JS replaces download buttons with IPC-driven handlers. The renderer controls its position/size via `window.electron.setContentsViewSize(x, y, w, h)`.

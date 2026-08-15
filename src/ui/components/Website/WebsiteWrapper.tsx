@@ -66,7 +66,7 @@ export const WebsiteWrapper = () => {
 
 
 
-  return <Flex direction={"column"} style={{ width: "100%", flexGrow: 1 }}>
+  return <Flex direction={"column"} className="w-full grow">
     <Box p="md">
 
       <Breadcrumbs>
@@ -78,8 +78,8 @@ export const WebsiteWrapper = () => {
         {breadcrumbs.length > 0 ? <Badge>{formatBreadcrumb(breadcrumbs[breadcrumbs.length - 1])}</Badge> : <></>}
       </Breadcrumbs>
     </Box>
-    <Flex ref={webViewRef} id="webcontentsview-placeholder" style={{ width: "100%", height: "100%", flexGrow: 1, justifyContent: "center", alignItems: "center" }}>
-      {currentUrl ? <></> : <Alert style={{ transform: "scale(1.25)" }} variant="light" color="gm-green" icon={<Image src={logo} alt="Git Mastery" />} title="Get started with lessons or exercises">
+    <Flex ref={webViewRef} id="webcontentsview-placeholder" className="w-full h-full grow justify-center items-center">
+      {currentUrl ? <></> : <Alert className="scale-125" variant="light" color="gm-green" icon={<Image src={logo} alt="Git Mastery" />} title="Get started with lessons or exercises">
         Choose a tour from the left sidebar, or download an exercise and start doing it!
       </Alert>}
 
