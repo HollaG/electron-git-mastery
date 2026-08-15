@@ -8,7 +8,9 @@ export function isDev() {
 
 export function ipcMainHandle<Key extends keyof IpcInvokeChannelMapping>(
   key: Key,
-  handler: (payload: IpcInvokeChannelMapping[Key]["request"]) => Promise<IpcInvokeChannelMapping[Key]["response"]>
+  handler: (
+    payload: IpcInvokeChannelMapping[Key]["request"],
+  ) => Promise<IpcInvokeChannelMapping[Key]["response"]>,
 ) {
   ipcMain.handle(key, async (event, payload) => {
     validateEventFrame(event.senderFrame!);
@@ -18,7 +20,7 @@ export function ipcMainHandle<Key extends keyof IpcInvokeChannelMapping>(
 
 export function ipcMainOn<Key extends keyof IpcHandlerChannelMapping>(
   key: Key,
-  handler: (payload: IpcHandlerChannelMapping[Key]) => void
+  handler: (payload: IpcHandlerChannelMapping[Key]) => void,
 ) {
   ipcMain.on(key, (event, payload) => {
     validateEventFrame(event.senderFrame!);
@@ -27,10 +29,10 @@ export function ipcMainOn<Key extends keyof IpcHandlerChannelMapping>(
 }
 
 export function validateEventFrame(frame: WebFrameMain) {
-  if (isDev() && new URL(frame.url).host === 'localhost:5123') {
+  if (isDev() && new URL(frame.url).host === "localhost:5123") {
     return;
   }
   if (frame.url !== pathToFileURL(getUIPath()).toString()) {
-    throw new Error('Malicious event');
+    throw new Error("Malicious event");
   }
 }

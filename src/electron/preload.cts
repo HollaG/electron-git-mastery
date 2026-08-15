@@ -1,45 +1,53 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electron", {
-
   // Terminal
-  spawn: (cols: number, rows: number) => ipcSend('pty-spawn', { cols, rows }),
-  write: (data: string) => ipcSend('pty-write', { data }),
-  onData: (callback: (data: string) => void) => ipcOn('pty-data', callback),
-  resize: (cols: number, rows: number) => ipcSend('pty-resize', { cols, rows }),
+  spawn: (cols: number, rows: number) => ipcSend("pty-spawn", { cols, rows }),
+  write: (data: string) => ipcSend("pty-write", { data }),
+  onData: (callback: (data: string) => void) => ipcOn("pty-data", callback),
+  resize: (cols: number, rows: number) => ipcSend("pty-resize", { cols, rows }),
 
   // WebContentsView
-  navigate: (url: string) => ipcSend('wcv-navigate', { url }),
-  setContentsViewSize: (x: number, y: number, width: number, height: number) => ipcSend('wcv-size', { x, y, width, height }),
-  hide: () => ipcSend('wcv-hide', null),
-  show: () => ipcSend('wcv-show', null),
+  navigate: (url: string) => ipcSend("wcv-navigate", { url }),
+  setContentsViewSize: (x: number, y: number, width: number, height: number) =>
+    ipcSend("wcv-size", { x, y, width, height }),
+  hide: () => ipcSend("wcv-hide", null),
+  show: () => ipcSend("wcv-show", null),
 
   // Config
-  setExeLocation: (location: string) => ipcSend('set-exe-location', { location }),
-  setDataDirectory: (directory: string) => ipcSend('set-data-directory', { directory }),
-  getDataDirectory: () => ipcInvoke('get-data-directory', null),
-  selectFolder: () => ipcInvoke('select-folder', null),
-  selectFile: () => ipcInvoke('select-file', "exe"),
+  setExeLocation: (location: string) =>
+    ipcSend("set-exe-location", { location }),
+  setDataDirectory: (directory: string) =>
+    ipcSend("set-data-directory", { directory }),
+  getDataDirectory: () => ipcInvoke("get-data-directory", null),
+  selectFolder: () => ipcInvoke("select-folder", null),
+  selectFile: () => ipcInvoke("select-file", "exe"),
 
   // Setup
-  checkGit: () => ipcInvoke('check-git', null),
-  checkGithubCli: () => ipcInvoke('check-github-cli', null),
-  downloadGitMasteryApp: () => ipcInvoke('download-gitmastery-app', null),
-  getGitMasteryVersion: () => ipcInvoke('get-gitmastery-version', null),
-
+  checkGit: () => ipcInvoke("check-git", null),
+  checkGithubCli: () => ipcInvoke("check-github-cli", null),
+  downloadGitMasteryApp: () => ipcInvoke("download-gitmastery-app", null),
+  getGitMasteryVersion: () => ipcInvoke("get-gitmastery-version", null),
 
   // GitMastery
-  getDownloadedExercises: () => ipcInvoke('get-downloaded-exercises', null),
+  getDownloadedExercises: () => ipcInvoke("get-downloaded-exercises", null),
 
-  startGitMasteryTask: (command: string) => ipcInvoke('gitmastery-start-task', { command }),
+  startGitMasteryTask: (command: string) =>
+    ipcInvoke("gitmastery-start-task", { command }),
   // onGitMasteryTaskData is a subscription, so it returns a cleanup function
   // GM_TASK_DATA_CHANNEL is inlined here (not imported) due to the Electron build boundary rule
-  onGitMasteryTaskData: (callback: (originalCommand: string, data: GitMasteryTaskData) => void) => ipcOn('gitmastery-task-data', (payload) => callback(payload.originalCommand, payload.data)),
-  startExercise: (exerciseIdentifier: string) => ipcSend('gitmastery-start-exercise', { exerciseIdentifier }),
+  onGitMasteryTaskData: (
+    callback: (originalCommand: string, data: GitMasteryTaskData) => void,
+  ) =>
+    ipcOn("gitmastery-task-data", (payload) =>
+      callback(payload.originalCommand, payload.data),
+    ),
+  startExercise: (exerciseIdentifier: string) =>
+    ipcSend("gitmastery-start-exercise", { exerciseIdentifier }),
 
   // Shell
-  openExternal: (url: string) => ipcSend('open-external', { url }),
-} satisfies Window['electron'])
+  openExternal: (url: string) => ipcSend("open-external", { url }),
+} satisfies Window["electron"]);
 
 // Note: you canNOT import external files into the preload script, due to Electron sandboxing
 /**
@@ -49,7 +57,7 @@ contextBridge.exposeInMainWorld("electron", {
  */
 function ipcInvoke<Key extends keyof IpcInvokeChannelMapping>(
   key: Key,
-  payload: IpcInvokeChannelMapping[Key]["request"]
+  payload: IpcInvokeChannelMapping[Key]["request"],
 ): Promise<IpcInvokeChannelMapping[Key]["response"]> {
   return ipcRenderer.invoke(key, payload);
 }
@@ -61,7 +69,7 @@ function ipcInvoke<Key extends keyof IpcInvokeChannelMapping>(
  */
 function ipcOn<Key extends keyof IpcHandlerChannelMapping>(
   key: Key,
-  callback: (payload: IpcHandlerChannelMapping[Key]) => void
+  callback: (payload: IpcHandlerChannelMapping[Key]) => void,
 ) {
   const cb = (_: Electron.IpcRendererEvent, payload: any) => callback(payload);
   ipcRenderer.on(key, cb);
@@ -70,12 +78,12 @@ function ipcOn<Key extends keyof IpcHandlerChannelMapping>(
 
 /**
  * Unidirectional / One-Way communication (Renderer -> Main).
- * "Fire and forget" - used for telling the Main process to perform an action 
+ * "Fire and forget" - used for telling the Main process to perform an action
  * where the UI doesn't need to wait for a result.
  */
 function ipcSend<Key extends keyof IpcHandlerChannelMapping>(
   key: Key,
-  payload: IpcHandlerChannelMapping[Key]
+  payload: IpcHandlerChannelMapping[Key],
 ) {
   ipcRenderer.send(key, payload);
 }

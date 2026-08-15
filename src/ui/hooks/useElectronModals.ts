@@ -12,18 +12,20 @@ export const useElectronModals = () => {
     hide();
     const modalId = modals.openModal(...args);
     return modalId;
-  }
+  };
 
-  const openConfirmModal = (...args: Parameters<typeof modals.openConfirmModal>) => {
+  const openConfirmModal = (
+    ...args: Parameters<typeof modals.openConfirmModal>
+  ) => {
     hide();
     const modalId = modals.openConfirmModal(...args);
     return modalId;
-  }
+  };
 
   const close = (modalId: string) => {
     modals.closeModal(modalId);
     show();
-  }
+  };
 
   return { open, close, openConfirmModal, closeAll: modals.closeAll };
-}
+};

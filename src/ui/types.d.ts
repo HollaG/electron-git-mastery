@@ -1,8 +1,8 @@
-import { TextVariant } from '@mantine/core';
+import { TextVariant } from "@mantine/core";
 
-type ExtendedTextVariant = TextVariant | 'subheading';
+type ExtendedTextVariant = TextVariant | "subheading";
 
-declare module '@mantine/core' {
+declare module "@mantine/core" {
   export interface TextProps {
     variant?: ExtendedTextVariant;
   }

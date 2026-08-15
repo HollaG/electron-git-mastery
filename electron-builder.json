@@ -4,21 +4,12 @@
     "buildResources": "resources"
   },
   "icon": "icon.png",
-  "files": [
-    "dist-react",
-    "dist-electron"
-  ],
+  "files": ["dist-react", "dist-electron"],
   "win": {
-    "target": [
-      "portable",
-      "msi"
-    ]
+    "target": ["portable", "msi"]
   },
   "linux": {
-    "target": [
-      "AppImage",
-      "deb"
-    ]
+    "target": ["AppImage", "deb"]
   },
   "mac": {
     "target": "dmg"

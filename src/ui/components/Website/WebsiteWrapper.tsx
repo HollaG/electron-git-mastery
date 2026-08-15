@@ -1,14 +1,22 @@
-import { Alert, Badge, Box, Breadcrumbs, Center, Flex, Image, Text } from "@mantine/core"
-import { useEffect, useRef } from "react"
-import { useWebContentsView } from "../../context/useWebContentsView"
-import { formatBreadcrumb } from "../../utils/format"
-import logo from "../../assets/logo.png"
+import {
+  Alert,
+  Badge,
+  Box,
+  Breadcrumbs,
+  Center,
+  Flex,
+  Image,
+  Text,
+} from "@mantine/core";
+import { useEffect, useRef } from "react";
+import { useWebContentsView } from "../../context/useWebContentsView";
+import { formatBreadcrumb } from "../../utils/format";
+import logo from "../../assets/logo.png";
 
 export const WebsiteWrapper = () => {
+  const webViewRef = useRef<HTMLDivElement>(null);
 
-  const webViewRef = useRef<HTMLDivElement>(null)
-
-  const { currentUrl, breadcrumbs, } = useWebContentsView()
+  const { currentUrl, breadcrumbs } = useWebContentsView();
 
   useEffect(() => {
     if (!webViewRef.current) return;
@@ -23,66 +31,94 @@ export const WebsiteWrapper = () => {
      */
     function sendBounds() {
       if (!webViewRef.current) return;
-      const { x, y, width, height } = webViewRef.current.getBoundingClientRect()
+      const { x, y, width, height } =
+        webViewRef.current.getBoundingClientRect();
 
-      const dpr = window.devicePixelRatio
-      const physX = Math.round(x * dpr)
-      const physY = Math.round(y * dpr)
-      const physW = Math.round(width * dpr)
-      const physH = Math.round(height * dpr)
+      const dpr = window.devicePixelRatio;
+      const physX = Math.round(x * dpr);
+      const physY = Math.round(y * dpr);
+      const physW = Math.round(width * dpr);
+      const physH = Math.round(height * dpr);
 
-      console.log({ css: { x, y, width, height }, dpr, physical: { x: physX, y: physY, width: physW, height: physH } })
-      window.electron.setContentsViewSize(physX, physY, physW, physH)
+      console.log({
+        css: { x, y, width, height },
+        dpr,
+        physical: { x: physX, y: physY, width: physW, height: physH },
+      });
+      window.electron.setContentsViewSize(physX, physY, physW, physH);
     }
 
     // Re-send bounds whenever the element is resized.
-    const resizeObserver = new ResizeObserver(sendBounds)
-    resizeObserver.observe(webViewRef.current)
+    const resizeObserver = new ResizeObserver(sendBounds);
+    resizeObserver.observe(webViewRef.current);
 
     // Re-send bounds when the window moves to a monitor with a different
     // pixel density. matchMedia fires a 'change' event when the media query
     // result flips, so we register a new listener every time the DPR changes
     // (the standard recursive pattern for cross-monitor DPR tracking).
-    let dprCleanup: (() => void) | null = null
+    let dprCleanup: (() => void) | null = null;
 
     function watchDpr() {
-      dprCleanup?.()
-      const mql = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+      dprCleanup?.();
+      const mql = window.matchMedia(
+        `(resolution: ${window.devicePixelRatio}dppx)`,
+      );
       const onChange = () => {
-        sendBounds()
-        watchDpr() // re-register for the *next* DPR change
-      }
-      mql.addEventListener("change", onChange)
-      dprCleanup = () => mql.removeEventListener("change", onChange)
+        sendBounds();
+        watchDpr(); // re-register for the *next* DPR change
+      };
+      mql.addEventListener("change", onChange);
+      dprCleanup = () => mql.removeEventListener("change", onChange);
     }
 
-    watchDpr()
+    watchDpr();
 
     return () => {
-      resizeObserver.disconnect()
-      dprCleanup?.()
-    }
-  }, [webViewRef])
+      resizeObserver.disconnect();
+      dprCleanup?.();
+    };
+  }, [webViewRef]);
 
+  return (
+    <Flex direction={"column"} className="w-full grow">
+      <Box p="md">
+        <Breadcrumbs>
+          {/* Map all except last one */}
+          {breadcrumbs.slice(0, -1).map((breadcrumb, index) => (
+            <Text variant="subheading" size="sm" key={index}>
+              {formatBreadcrumb(breadcrumb).toUpperCase()}
+            </Text>
+          ))}
 
-
-  return <Flex direction={"column"} className="w-full grow">
-    <Box p="md">
-
-      <Breadcrumbs>
-        {/* Map all except last one */}
-        {breadcrumbs.slice(0, -1).map((breadcrumb, index) => (
-          <Text variant="subheading" size="sm" key={index}>{formatBreadcrumb(breadcrumb).toUpperCase()}</Text>
-        ))}
-
-        {breadcrumbs.length > 0 ? <Badge>{formatBreadcrumb(breadcrumbs[breadcrumbs.length - 1])}</Badge> : <></>}
-      </Breadcrumbs>
-    </Box>
-    <Flex ref={webViewRef} id="webcontentsview-placeholder" className="w-full h-full grow justify-center items-center">
-      {currentUrl ? <></> : <Alert className="scale-125" variant="light" color="gm-green" icon={<Image src={logo} alt="Git Mastery" />} title="Get started with lessons or exercises">
-        Choose a tour from the left sidebar, or download an exercise and start doing it!
-      </Alert>}
-
+          {breadcrumbs.length > 0 ? (
+            <Badge>
+              {formatBreadcrumb(breadcrumbs[breadcrumbs.length - 1])}
+            </Badge>
+          ) : (
+            <></>
+          )}
+        </Breadcrumbs>
+      </Box>
+      <Flex
+        ref={webViewRef}
+        id="webcontentsview-placeholder"
+        className="w-full h-full grow justify-center items-center"
+      >
+        {currentUrl ? (
+          <></>
+        ) : (
+          <Alert
+            className="scale-125"
+            variant="light"
+            color="gm-green"
+            icon={<Image src={logo} alt="Git Mastery" />}
+            title="Get started with lessons or exercises"
+          >
+            Choose a tour from the left sidebar, or download an exercise and
+            start doing it!
+          </Alert>
+        )}
+      </Flex>
     </Flex>
-  </Flex>
-}
+  );
+};

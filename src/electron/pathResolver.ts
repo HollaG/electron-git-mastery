@@ -3,11 +3,7 @@ import path from "path";
 import { isDev } from "./utils/util.js";
 
 export function getPreloadPath() {
-  return path.join(
-    app.getAppPath(),
-    "dist-electron",
-    "preload.cjs"
-  )
+  return path.join(app.getAppPath(), "dist-electron", "preload.cjs");
 }
 
 /**
@@ -16,18 +12,13 @@ export function getPreloadPath() {
  * It exposes window.wcvBridge.send() so injected JS can fire IPC events.
  */
 export function getWcvPreloadPath() {
-  return path.join(
-    app.getAppPath(),
-    "dist-electron",
-    "wcv-preload.cjs"
-  )
+  return path.join(app.getAppPath(), "dist-electron", "wcv-preload.cjs");
 }
 
-
 export function getUIPath() {
-  return path.join(app.getAppPath(), '/dist-react/index.html');
+  return path.join(app.getAppPath(), "/dist-react/index.html");
 }
 
 export function getAssetPath() {
-  return path.join(app.getAppPath(), 'src/assets');
+  return path.join(app.getAppPath(), "src/assets");
 }

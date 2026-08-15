@@ -20,26 +20,34 @@ export const downloadApp = async (): Promise<void> => {
     await execAsync("brew --version", { env });
   } catch {
     throw new Error(
-      "Homebrew is not installed. Please install Homebrew from https://brew.sh and then re-run this step."
+      "Homebrew is not installed. Please install Homebrew from https://brew.sh and then re-run this step.",
     );
   }
 
   // Upgrade if already installed, otherwise install fresh.
   // This ensures clicking the button always gets the latest version.
-  logGM("download", "darwin", "Running: brew upgrade gitmastery || brew install gitmastery");
+  logGM(
+    "download",
+    "darwin",
+    "Running: brew upgrade gitmastery || brew install gitmastery",
+  );
   try {
-    const { stdout: tapStdout, stderr: tapStderr } = await execAsync('brew tap git-mastery/gitmastery')
+    const { stdout: tapStdout, stderr: tapStderr } = await execAsync(
+      "brew tap git-mastery/gitmastery",
+    );
     if (tapStdout) logGM("download", "darwin", tapStdout.trim());
     if (tapStderr) logGM("download", "darwin", tapStderr.trim());
     const { stdout, stderr } = await execAsync(
       "brew upgrade gitmastery || brew install gitmastery",
-      { env }
+      { env },
     );
     if (stdout) logGM("download", "darwin", stdout.trim());
     if (stderr) logGM("download", "darwin", stderr.trim());
     logGM("download", "darwin", "gitmastery installed/updated successfully.");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Failed to install/update gitmastery via Homebrew: ${message}`);
+    throw new Error(
+      `Failed to install/update gitmastery via Homebrew: ${message}`,
+    );
   }
 };

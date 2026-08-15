@@ -1,14 +1,14 @@
-import type { Lesson } from "./Tour"
+import type { Lesson } from "./Tour";
 
 export type Exercises = {
-  [key: string]: Exercise
-}
+  [key: string]: Exercise;
+};
 
 export type Exercise = {
-  lesson?: Lesson,
+  lesson?: Lesson;
   detour?: {
-    lesson: Lesson,
-    title: string
-  },
-  identifier: string
-}
+    lesson: Lesson;
+    title: string;
+  };
+  identifier: string;
+};

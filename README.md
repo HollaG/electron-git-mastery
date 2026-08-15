@@ -35,11 +35,11 @@ npm run dev
 
 Builds take a while. The Dock / installer / `.exe` icon is `resources/icon.png` — see [packaging.md](docs/development/packaging.md).
 
-| Platform | Command | Output |
-|---|---|---|
-| Windows | `npm run dist:win` | `.exe` installer |
-| macOS | `npm run dist:mac` | `dist/git-mastery-{version}-arm64.dmg` and `dist/mac-arm64/git-mastery.app` |
-| Linux | `npm run dist:linux` | AppImage / dist artifacts |
+| Platform | Command              | Output                                                                      |
+| -------- | -------------------- | --------------------------------------------------------------------------- |
+| Windows  | `npm run dist:win`   | `.exe` installer                                                            |
+| macOS    | `npm run dist:mac`   | `dist/git-mastery-{version}-arm64.dmg` and `dist/mac-arm64/git-mastery.app` |
+| Linux    | `npm run dist:linux` | AppImage / dist artifacts                                                   |
 
 macOS users of an unsigned build still need the `xattr` command above after installing.
 

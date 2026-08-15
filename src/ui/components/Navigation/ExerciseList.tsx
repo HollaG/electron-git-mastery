@@ -1,6 +1,20 @@
-import { ActionIcon, Autocomplete, Box, Button, Flex, Modal, Select, Stack, Text } from "@mantine/core"
-import { IconCheck, IconPlus, IconX } from "@tabler/icons-react"
-import { buildExerciseUrl, buildLessonUrl, useWebContentsView } from "../../context/useWebContentsView"
+import {
+  ActionIcon,
+  Autocomplete,
+  Box,
+  Button,
+  Flex,
+  Modal,
+  Select,
+  Stack,
+  Text,
+} from "@mantine/core";
+import { IconCheck, IconPlus, IconX } from "@tabler/icons-react";
+import {
+  buildExerciseUrl,
+  buildLessonUrl,
+  useWebContentsView,
+} from "../../context/useWebContentsView";
 import { useExercises } from "../../hooks/query/useExercises";
 import { useMemo, useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -13,10 +27,9 @@ import { useElectronStream } from "../../hooks/useElectronStream";
 import { useLocalExercises } from "../../hooks/query/useLocalExercises";
 
 // temporary map to store data
-const activeNotifications: Record<string, any> = {}
+const activeNotifications: Record<string, any> = {};
 
 export const ExerciseList = () => {
-
   const { openConfirmModal, close, closeAll } = useElectronModals();
   const [isCurrentlyAdding, setIsCurrentlyAdding] = useState(false);
 
@@ -26,7 +39,8 @@ export const ExerciseList = () => {
   const { navigate } = useWebContentsView();
   const selectedExerciseRef = useRef<Exercise | null>(null);
 
-  const { downloadedExerciseData, rescanDownloadedExercises } = useLocalExercises();
+  const { downloadedExerciseData, rescanDownloadedExercises } =
+    useLocalExercises();
 
   const downloadedExercises = useMemo(() => {
     // TODO:
@@ -39,20 +53,22 @@ export const ExerciseList = () => {
     //   return value;
     // })
 
-    return Object.keys(downloadedExerciseData || {}).map(
-      (exerciseKey) => {
-        const exercise = Object.values(exercisesQuery.data || {}).find(exercise => exercise.identifier === exerciseKey)
+    return Object.keys(downloadedExerciseData || {})
+      .map((exerciseKey) => {
+        const exercise = Object.values(exercisesQuery.data || {}).find(
+          (exercise) => exercise.identifier === exerciseKey,
+        );
         if (!exercise) {
-          return null
+          return null;
         }
         return {
           exercise: exercise,
 
           // TODO: fragile
-          status: downloadedExerciseData![exerciseKey].status
-        }
-      }
-    ).filter(Boolean) as { exercise: Exercise, status: ProgressState }[]
+          status: downloadedExerciseData![exerciseKey].status,
+        };
+      })
+      .filter(Boolean) as { exercise: Exercise; status: ProgressState }[];
 
     // return downloadedExerciseData?.map(
     //   (data) => ({
@@ -68,7 +84,7 @@ export const ExerciseList = () => {
     // })).filter(Boolean) as {
 
     //   }[] || []
-  }, [downloadedExerciseData, exercisesQuery.data])
+  }, [downloadedExerciseData, exercisesQuery.data]);
 
   const onAddSelectedClicked = () => {
     // hide()
@@ -82,7 +98,9 @@ export const ExerciseList = () => {
           placeholder="Pick value"
 
           // TODO: confirm with prof on the correct naming scheme
-          data={Object.values(exercisesQuery.data || {}).map(exercise => exercise.identifier)}
+          data={Object.values(exercisesQuery.data || {}).map(
+            (exercise) => exercise.identifier,
+          )}
           onChange={onSelectExercise}
           searchable
         />
@@ -93,52 +111,52 @@ export const ExerciseList = () => {
       },
       onCancel: () => close(modalId),
       onConfirm: () => onStartAdding(),
-
-    })
-
-
-  }
+    });
+  };
   const onSelectExercise = (exerciseIdentifier: string | null) => {
     // setSelectedExercise(exercise)
     if (!exerciseIdentifier) {
-      return
+      return;
     }
 
-    console.log(`selected exercise ${exerciseIdentifier}`)
-    const exercise = Object.values(exercisesQuery.data || {}).find(exercise => exercise.identifier === exerciseIdentifier) || null
-    console.log({ data: exercisesQuery.data, exercise: exercise })
-    selectedExerciseRef.current = exercise
-
-  }
-
+    console.log(`selected exercise ${exerciseIdentifier}`);
+    const exercise =
+      Object.values(exercisesQuery.data || {}).find(
+        (exercise) => exercise.identifier === exerciseIdentifier,
+      ) || null;
+    console.log({ data: exercisesQuery.data, exercise: exercise });
+    selectedExerciseRef.current = exercise;
+  };
 
   /**
    * This function is only meant to kick-off the process of downloading.
    * It should not do too much else: The reason is that other places
    * e.g. the backend can also start the process of downloading.
-   * 
+   *
    * Download status is streamed back to the FE, so minimal logic should be
    * placed here, to ensure that the visual experience is the same whether FE or BE
-   * 
+   *
    */
   const onStartAdding = () => {
-
     // use a ref to prevent stale data from closures
     const currentActiveExercise = selectedExerciseRef.current;
     if (!currentActiveExercise) return;
     console.log("------ downloading ------");
     console.log({ currentActiveExercise });
 
-    window.electron.startGitMasteryTask(`download ${currentActiveExercise?.identifier}`)
+    window.electron.startGitMasteryTask(
+      `download ${currentActiveExercise?.identifier}`,
+    );
     closeAll();
     navigate(buildExerciseUrl(currentActiveExercise));
-
-
-  }
+  };
 
   // don't need to be reactive
-  const historyLines: string[] = [] // max 4
-  const onExerciseDownloadProgress = (originalCommand: string, data: GitMasteryTaskData) => {
+  const historyLines: string[] = []; // max 4
+  const onExerciseDownloadProgress = (
+    originalCommand: string,
+    data: GitMasteryTaskData,
+  ) => {
     setIsCurrentlyAdding(true);
     if (!activeNotifications[originalCommand]) {
       activeNotifications[originalCommand] = showNotification({
@@ -148,16 +166,18 @@ export const ExerciseList = () => {
         loading: true,
         autoClose: false,
         withCloseButton: false,
-      })
+      });
     }
 
     const message = data.success!.message;
     const exerciseIdentifier = data.exerciseIdentifier;
     if (exerciseIdentifier && !selectedExerciseRef.current) {
-      const exercise = Object.values(exercisesQuery.data || {}).find(exercise => exercise.identifier === exerciseIdentifier) || null
-      selectedExerciseRef.current = exercise
+      const exercise =
+        Object.values(exercisesQuery.data || {}).find(
+          (exercise) => exercise.identifier === exerciseIdentifier,
+        ) || null;
+      selectedExerciseRef.current = exercise;
     }
-
 
     historyLines.push(message);
     if (historyLines.length > 4) {
@@ -167,13 +187,15 @@ export const ExerciseList = () => {
     updateNotification({
       id: originalCommand,
       message: historyLines.join("\n"),
-    })
+    });
+  };
 
-  }
-
-  const onExerciseDownloadComplete = (originalCommand: string, data: GitMasteryTaskData) => {
-    console.log("[info] download completed, refetching downloaded exercises")
-    rescanDownloadedExercises()
+  const onExerciseDownloadComplete = (
+    originalCommand: string,
+    data: GitMasteryTaskData,
+  ) => {
+    console.log("[info] download completed, refetching downloaded exercises");
+    rescanDownloadedExercises();
 
     updateNotification({
       id: originalCommand,
@@ -184,7 +206,7 @@ export const ExerciseList = () => {
       icon: <IconCheck size={18} />,
       autoClose: 5000,
       withCloseButton: true,
-    })
+    });
 
     // close modal
     // TODO: be more specific in which modal we're closing
@@ -194,17 +216,20 @@ export const ExerciseList = () => {
     const selectedExercise = selectedExerciseRef.current;
 
     if (selectedExercise) {
-      startExercise(selectedExercise)
+      startExercise(selectedExercise);
     }
 
     selectedExerciseRef.current = null;
     setIsCurrentlyAdding(false);
 
-    activeNotifications[originalCommand] = null
-  }
+    activeNotifications[originalCommand] = null;
+  };
 
-  const onExerciseDownloadFailure = (originalCommand: string, data: GitMasteryTaskData) => {
-    console.log("[info] download completed but with errors.")
+  const onExerciseDownloadFailure = (
+    originalCommand: string,
+    data: GitMasteryTaskData,
+  ) => {
+    console.log("[info] download completed but with errors.");
 
     updateNotification({
       id: originalCommand,
@@ -215,47 +240,46 @@ export const ExerciseList = () => {
       icon: <IconX size={18} />,
       autoClose: 5000,
       withCloseButton: true,
-    })
+    });
 
     closeAll();
     selectedExerciseRef.current = null;
     setIsCurrentlyAdding(false);
 
-    activeNotifications[originalCommand] = null
+    activeNotifications[originalCommand] = null;
+  };
 
-  }
-
-  const { } = useElectronStream({
+  const {} = useElectronStream({
     condition: (cmd: string) => cmd.startsWith("download"),
     onData: onExerciseDownloadProgress,
     onSuccessExit: onExerciseDownloadComplete,
     onFailedExit: onExerciseDownloadFailure,
-  })
+  });
 
+  return (
+    <>
+      <Stack w="100%">
+        <Flex justify={"space-between"} align={"center"} w="100%">
+          <Text variant="subheading" className="grow">
+            {" "}
+            Lessons{" "}
+          </Text>
+          <ActionIcon size="xs">
+            <IconPlus onClick={onAddSelectedClicked} />
+          </ActionIcon>
+        </Flex>
 
-
-
-  return <>
-    <Stack w="100%">
-      <Flex justify={'space-between'} align={'center'} w="100%">
-
-        <Text variant="subheading" className="grow"> Lessons </Text>
-        <ActionIcon size="xs">
-          <IconPlus onClick={onAddSelectedClicked} />
-        </ActionIcon>
-      </Flex>
-
-      <Stack>
-        {downloadedExercises?.map(exerciseData => (
-          <DownloadedExercise key={exerciseData?.exercise.identifier} exercise={exerciseData.exercise} status={exerciseData.status} />
-        ))}
-
-
+        <Stack>
+          {downloadedExercises?.map((exerciseData) => (
+            <DownloadedExercise
+              key={exerciseData?.exercise.identifier}
+              exercise={exerciseData.exercise}
+              status={exerciseData.status}
+            />
+          ))}
+        </Stack>
       </Stack>
-
-
-    </Stack>
-    {/* <Modal opened={opened} onClose={onModalClose} title="Add Exercises" centered>
+      {/* <Modal opened={opened} onClose={onModalClose} title="Add Exercises" centered>
 
       <Select
         label="Select an exercise to download"
@@ -272,46 +296,49 @@ export const ExerciseList = () => {
         <Button disabled={!selectedExercise} onClick={onStartAdding}> Download </Button>
       </Flex>
     </Modal> */}
-  </>
-}
+    </>
+  );
+};
 
-export const DownloadedExercise = ({ exercise, status }: { exercise: Exercise, status: ProgressState }) => {
+export const DownloadedExercise = ({
+  exercise,
+  status,
+}: {
+  exercise: Exercise;
+  status: ProgressState;
+}) => {
   const { navigate } = useWebContentsView();
   const { startExercise } = useActivity();
 
-  return <Flex className="w-full items-center">
-    {statusMap[status as keyof typeof statusMap]()}
-    <NavigationButton title={exercise.identifier} onClick={() => {
-      navigate(buildExerciseUrl(exercise));
-      startExercise(exercise);
-
-    }} />
-  </Flex >
-}
-
-
+  return (
+    <Flex className="w-full items-center">
+      {statusMap[status as keyof typeof statusMap]()}
+      <NavigationButton
+        title={exercise.identifier}
+        onClick={() => {
+          navigate(buildExerciseUrl(exercise));
+          startExercise(exercise);
+        }}
+      />
+    </Flex>
+  );
+};
 
 const InProgress = () => {
-  return <Box bg="yellow.5" className="w-3 h-3 rounded">
-
-  </Box>
-}
+  return <Box bg="yellow.5" className="w-3 h-3 rounded"></Box>;
+};
 
 const Correct = () => {
-  return <Box bg="green.5" className="w-3 h-3 rounded">
-
-  </Box>
-}
+  return <Box bg="green.5" className="w-3 h-3 rounded"></Box>;
+};
 
 const Incorrect = () => {
-  return <Box bg="red.5" className="w-3 h-3 rounded">
-
-  </Box>
-}
+  return <Box bg="red.5" className="w-3 h-3 rounded"></Box>;
+};
 
 const statusMap = {
-  "correct": Correct,
-  "incorrect": Incorrect,
+  correct: Correct,
+  incorrect: Incorrect,
   "in-progress": InProgress,
   "not-started": InProgress,
-}
+};

@@ -3,7 +3,7 @@ import { getConfig } from "../../storage.js";
 
 // Helper function to get the correct gitmastery executable based on platform
 export function getGitMasteryExecutable(): string {
-  if (process.platform === 'darwin') {
+  if (process.platform === "darwin") {
     return "gitmastery";
   }
 
@@ -32,37 +32,34 @@ export function getGitMasteryExecutable(): string {
 export function getEnvironmentWithHomebrew(): NodeJS.ProcessEnv {
   const env = { ...process.env };
 
-  if (process.platform === 'darwin') {
+  if (process.platform === "darwin") {
     // On macOS, add common Homebrew paths to PATH
     const homebrewPaths = [
-      '/opt/homebrew/bin',      // Apple Silicon Macs
-      '/usr/local/bin',         // Intel Macs
-      '/opt/homebrew/sbin',
-      '/usr/local/sbin'
+      "/opt/homebrew/bin", // Apple Silicon Macs
+      "/usr/local/bin", // Intel Macs
+      "/opt/homebrew/sbin",
+      "/usr/local/sbin",
     ];
 
     // Standard system paths that should always be included
-    const systemPaths = [
-      '/usr/bin',
-      '/bin',
-      '/usr/sbin',
-      '/sbin'
-    ];
+    const systemPaths = ["/usr/bin", "/bin", "/usr/sbin", "/sbin"];
 
     // Get current PATH or use system paths as fallback
-    const currentPath = env.PATH || systemPaths.join(':');
+    const currentPath = env.PATH || systemPaths.join(":");
 
     // Combine Homebrew paths with current PATH
     // Put Homebrew paths first so they take precedence
-    const allPaths = [...homebrewPaths, ...currentPath.split(':')];
+    const allPaths = [...homebrewPaths, ...currentPath.split(":")];
 
     // Remove duplicates while preserving order
-    const uniquePaths = Array.from(new Set(allPaths)).filter(p => p.length > 0);
+    const uniquePaths = Array.from(new Set(allPaths)).filter(
+      (p) => p.length > 0,
+    );
 
-    env.PATH = uniquePaths.join(':');
+    env.PATH = uniquePaths.join(":");
 
     // Debug logging to help diagnose PATH issues
-    console.log('Enhanced PATH for macOS:', env.PATH);
+    console.log("Enhanced PATH for macOS:", env.PATH);
   }
 
   return env;
@@ -71,7 +68,9 @@ export function getEnvironmentWithHomebrew(): NodeJS.ProcessEnv {
 export function getExerciseDirectory(): string {
   const dataDirectory = getConfig().dataDirectory;
   if (!dataDirectory) {
-    throw new Error('Exercise directory not found, please configure them in settings.');
+    throw new Error(
+      "Exercise directory not found, please configure them in settings.",
+    );
   }
   return path.join(dataDirectory, "gitmastery-exercises");
 }

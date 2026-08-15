@@ -1,17 +1,20 @@
 import { useEffect, useState } from "react";
 import { useGitMasteryTask } from "../contexts/GitMasteryTaskContext";
 
-export const useElectronStream = ({ condition, onData, onSuccessExit, onFailedExit }: {
+export const useElectronStream = ({
+  condition,
+  onData,
+  onSuccessExit,
+  onFailedExit,
+}: {
   condition: (cmd: string) => boolean;
   onData: (originalCommand: string, data: GitMasteryTaskData) => void;
   onSuccessExit: (originalCommand: string, data: GitMasteryTaskData) => void;
   onFailedExit: (originalCommand: string, data: GitMasteryTaskData) => void;
 }) => {
-
   const { addListener } = useGitMasteryTask();
 
   useEffect(() => {
-
     const _onMessage = (originalCommand: string, data: GitMasteryTaskData) => {
       if (!condition(originalCommand)) return;
 
@@ -19,7 +22,7 @@ export const useElectronStream = ({ condition, onData, onSuccessExit, onFailedEx
         onSuccessExit(originalCommand, data);
         return;
       }
-      if (data.completed?.status === 'failure') {
+      if (data.completed?.status === "failure") {
         onFailedExit(originalCommand, data);
         return;
       }
@@ -29,12 +32,11 @@ export const useElectronStream = ({ condition, onData, onSuccessExit, onFailedEx
         onData(originalCommand, data);
         return;
       }
-    }
+    };
     const unsubscribe = addListener(condition, _onMessage);
 
-    return () => unsubscribe()
+    return () => unsubscribe();
   }, [condition, onData, onSuccessExit, onFailedExit]);
 
-  return { condition, onData, onSuccessExit, onFailedExit }
-
-}
+  return { condition, onData, onSuccessExit, onFailedExit };
+};

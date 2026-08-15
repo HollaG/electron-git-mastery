@@ -41,8 +41,11 @@ UI displays progress in real time
 Triggered by the renderer to kick off a GitMastery command.
 
 **Payload sent from renderer:**
+
 ```ts
-{ command: string }
+{
+  command: string;
+}
 // e.g. { command: "setup" }
 // e.g. { command: "download intro-to-git" }
 ```
@@ -59,6 +62,7 @@ Used to stream progress data back to the renderer in real time as the CLI produc
 This channel is fired multiple times per command invocation, once per chunk of stdout data.
 
 **Payload shape:**
+
 ```ts
 {
   originalCommand: string,        // e.g. "setup" or "download intro-to-git"
@@ -81,6 +85,7 @@ This channel is fired multiple times per command invocation, once per chunk of s
 ---
 
 # The two commands below were documented by AI and are subject to change.
+
 ## Command Lifecycle: `setup`
 
 The `setup` command is the first thing a new user runs. It performs the following checks
@@ -99,6 +104,7 @@ before proceeding.
 **Implemented in:** `src/electron/utils/win32/downloadExe.ts → downloadGitMasteryExe(destDir)`
 
 How it works:
+
 1. Calls `https://api.github.com/repos/git-mastery/app/releases/latest` to get the latest release metadata.
 2. Finds the asset named exactly `gitmastery.exe` in the release's asset list.
 3. Follows the GitHub CDN redirect (HTTP 301/302) and streams the binary to `<dataDirectory>/gitmastery.exe`.
@@ -130,17 +136,17 @@ Downloads a specific exercise from the GitMastery platform.
 1. Spawns `gitmastery download <exercise-name>` as a child process in `dataDirectory`.
 2. Streams stdout chunks to the renderer via `gitmastery-task-data`.
 3. Watches for `INFO cd` in stdout — this signals that the exercise was downloaded and the
-   simulated git terminal's working directory should be changed to the exercise folder. *(TODO: CWD change not yet wired up.)*
+   simulated git terminal's working directory should be changed to the exercise folder. _(TODO: CWD change not yet wired up.)_
 
 ---
 
 ## Executable Resolution (`getGitMasteryExecutable`)
 
-| Platform | Resolved path |
-|----------|---------------|
+| Platform | Resolved path                                                 |
+| -------- | ------------------------------------------------------------- |
 | `win32`  | `<dataDirectory>/gitmastery.exe` (auto-downloaded if missing) |
-| `darwin` | `gitmastery` (resolved from `PATH`, expected via Homebrew) |
-| `linux`  | TODO |
+| `darwin` | `gitmastery` (resolved from `PATH`, expected via Homebrew)    |
+| `linux`  | TODO                                                          |
 
 > **Important — no `shell: true`**
 > `child_process.spawn` is called **without** `shell: true`. This is intentional.
@@ -163,8 +169,8 @@ On Windows and Linux, the environment is passed through unchanged.
 
 ## Relevant Files
 
-| File | Purpose |
-|------|---------|
-| `src/electron/ipc/terminal.ts` | IPC handlers (`setupGitmasteryIpc`, `_setup`, `_download`) and helper utilities |
-| `src/electron/utils/win32/downloadExe.ts` | Windows-only: downloads `gitmastery.exe` from GitHub Releases |
-| `src/electron/storage.ts` | Persists and retrieves `dataDirectory` and other config values |
+| File                                      | Purpose                                                                         |
+| ----------------------------------------- | ------------------------------------------------------------------------------- |
+| `src/electron/ipc/terminal.ts`            | IPC handlers (`setupGitmasteryIpc`, `_setup`, `_download`) and helper utilities |
+| `src/electron/utils/win32/downloadExe.ts` | Windows-only: downloads `gitmastery.exe` from GitHub Releases                   |
+| `src/electron/storage.ts`                 | Persists and retrieves `dataDirectory` and other config values                  |

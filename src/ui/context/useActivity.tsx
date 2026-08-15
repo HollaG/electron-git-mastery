@@ -1,6 +1,6 @@
 // This context handles the current "Activity" state of the application.
 // -- An activity can either be an active `Lessson` or an active `Exercise`.
-// The responsibility of this context is to: 
+// The responsibility of this context is to:
 // 1. Keep track of the current activity
 // 2. Start and end activities
 // -- Communicate to the backend to set the working directory, etc.
@@ -8,7 +8,13 @@
 // 4. Verify `Exercise` correctness and handle notifications
 // 5. Handle downloading exercises (TODO)
 
-import { useState, createContext, useContext, type ReactNode, useRef } from "react";
+import {
+  useState,
+  createContext,
+  useContext,
+  type ReactNode,
+  useRef,
+} from "react";
 import type { Lesson } from "../../types/Tour";
 import type { Exercise } from "../../types/Exercise";
 import { useLocalStorage } from "@mantine/hooks";
@@ -31,13 +37,19 @@ type ActivityState = {
   endLesson: () => void;
   getActivityText: () => string;
   endActivity: () => void;
-  verifyExercise: ({ showProgress, callback }: { showProgress?: boolean, callback?: () => void }) => boolean;
+  verifyExercise: ({
+    showProgress,
+    callback,
+  }: {
+    showProgress?: boolean;
+    callback?: () => void;
+  }) => boolean;
 };
 
 const ActivityContext = createContext<ActivityState | null>(null);
 
 // temporary map to store data
-const activeNotifications: Record<string, any> = {}
+const activeNotifications: Record<string, any> = {};
 
 export function ActivityProvider({ children }: { children: ReactNode }) {
   const { navigate } = useWebContentsView();
@@ -46,12 +58,12 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
 
   const [showOnboardingLesson, setShowOnboardingLesson] = useLocalStorage({
-    key: 'showOnboardingLesson',
+    key: "showOnboardingLesson",
     defaultValue: true,
   });
 
   const [showOnboardingExercise, setShowOnboardingExercise] = useLocalStorage({
-    key: 'showOnboardingExercise',
+    key: "showOnboardingExercise",
     defaultValue: true,
   });
 
@@ -59,12 +71,11 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   const { rescanDownloadedExercises } = useLocalExercises();
 
-
   const startExercise = (exercise: Exercise) => {
     // other logic
 
     // TODO: we can add a "timer" too!!
-    setCurrentExercise(exercise)
+    setCurrentExercise(exercise);
 
     // if (navigateToPage) navigate(buildExerciseUrl(exercise));
     if (showOnboardingExercise) {
@@ -72,108 +83,113 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         title: "Exercise",
         children: (
           <Stack>
-            <Text> You are about to begin doing an exercise. Work through the exercise in the terminal and click Verify when you think you are done.</Text>
+            <Text>
+              {" "}
+              You are about to begin doing an exercise. Work through the
+              exercise in the terminal and click Verify when you think you are
+              done.
+            </Text>
 
             <Checkbox
               ref={showOnboardingRef}
               label="Don't show this again"
-            // checked={!showOnboardingExercise}
-            // onChange={(event) => { console.log(event); setShowOnboardingExercise((prev) => !prev) }}
-            // checked={!showOnboardingRef.current}
-            // onChange={(event) => {
-            //   showOnboardingRef.current = event.currentTarget.checked;
-            //   setShowOnboardingExercise(event.currentTarget.checked);
-            // }}
+              // checked={!showOnboardingExercise}
+              // onChange={(event) => { console.log(event); setShowOnboardingExercise((prev) => !prev) }}
+              // checked={!showOnboardingRef.current}
+              // onChange={(event) => {
+              //   showOnboardingRef.current = event.currentTarget.checked;
+              //   setShowOnboardingExercise(event.currentTarget.checked);
+              // }}
             />
             <Flex justify={"end"}>
-
-              <Button onClick={() => {
-                close(modalId);
-                window.electron.startExercise(exercise.identifier);
-                // use the ref to update the localstorage
-                if (showOnboardingRef.current) {
-                  setShowOnboardingExercise(!showOnboardingRef.current.checked);
-                }
-
-              }}>
+              <Button
+                onClick={() => {
+                  close(modalId);
+                  window.electron.startExercise(exercise.identifier);
+                  // use the ref to update the localstorage
+                  if (showOnboardingRef.current) {
+                    setShowOnboardingExercise(
+                      !showOnboardingRef.current.checked,
+                    );
+                  }
+                }}
+              >
                 Start
               </Button>
             </Flex>
-          </ Stack>
+          </Stack>
         ),
-
-      })
-
+      });
     } else {
-      window.electron.startExercise(exercise.identifier)
+      window.electron.startExercise(exercise.identifier);
     }
-
-
-
-  }
+  };
 
   const startLesson = (lesson: Lesson) => {
-    setCurrentLesson(lesson)
-    setCurrentExercise(null)
-  }
+    setCurrentLesson(lesson);
+    setCurrentExercise(null);
+  };
 
   const endExercise = () => {
-    setCurrentExercise(null)
-  }
+    setCurrentExercise(null);
+  };
 
   const endLesson = () => {
-    setCurrentLesson(null)
-  }
+    setCurrentLesson(null);
+  };
 
   const endActivity = () => {
-    setCurrentLesson(null)
-    setCurrentExercise(null)
-  }
+    setCurrentLesson(null);
+    setCurrentExercise(null);
+  };
 
   const getExerciseText = () => {
     if (currentExercise) {
-      return formatExerciseTitle(currentExercise)
+      return formatExerciseTitle(currentExercise);
     }
-    return ""
-  }
+    return "";
+  };
   const getLessonText = () => {
-    return "" // TODO
-  }
+    return ""; // TODO
+  };
 
   const getActivityText = () => {
     if (currentExercise) {
-      return getExerciseText()
+      return getExerciseText();
     }
     if (currentLesson) {
-      return getLessonText()
+      return getLessonText();
     }
-    return ""
-  }
+    return "";
+  };
 
-  const isDoingActivity =
-    currentLesson !== null || currentExercise !== null
-
+  const isDoingActivity = currentLesson !== null || currentExercise !== null;
 
   const showProgressRef = useRef<boolean>(true);
   const exerciseVerifyCallbackRef = useRef<() => void>(null);
 
-
   /**
    * Begins the process of verifying the current exercise.
    * Note that we should only show the notification WHEN the backend has started verifying the exercise.
-   * 
+   *
    * @param [showProgress=true] - Whether to show the progress toast
    * @param callback - Callback function to be called when the exercise is verified
-   * 
+   *
    * @returns true if exercise has began verifying, false if not
    */
-  const verifyExercise = ({ showProgress = true, callback = () => { } }: { showProgress?: boolean, callback?: () => void }) => {
+  const verifyExercise = ({
+    showProgress = true,
+    callback = () => {},
+  }: {
+    showProgress?: boolean;
+    callback?: () => void;
+  }) => {
     if (!currentExercise) {
-      return false
+      return false;
     }
     showProgressRef.current = showProgress;
     exerciseVerifyCallbackRef.current = callback;
-    window.electron.startGitMasteryTask(`verify ${currentExercise.identifier}`)
+    window.electron.startGitMasteryTask(`verify ${currentExercise.identifier}`);
 
     // if (!activeNotifications[currentExercise.identifier]) {
     //   activeNotifications[currentExercise.identifier] =
@@ -188,46 +204,51 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     // }
 
     // refresh the left sidebar because the status is now updated
-    // 
-    return true
-  }
+    //
+    return true;
+  };
 
-  const _onExerciseVerifyData = (originalCommand: string, data: GitMasteryTaskData) => {
+  const _onExerciseVerifyData = (
+    originalCommand: string,
+    data: GitMasteryTaskData,
+  ) => {
     if (!data.exerciseIdentifier) return;
-    if (!currentExercise) { // we cannot verify if there is no exercise selected (assume that an exercise selected --> we are cd'ed into a folder (required for verify to work))
-      return
+    if (!currentExercise) {
+      // we cannot verify if there is no exercise selected (assume that an exercise selected --> we are cd'ed into a folder (required for verify to work))
+      return;
     }
-    const notificationId = `${originalCommand}-${data.exerciseIdentifier}`
+    const notificationId = `${originalCommand}-${data.exerciseIdentifier}`;
 
     if (!activeNotifications[notificationId]) {
-      activeNotifications[notificationId] =
-        showNotification({
-          id: notificationId,
-          title: "Verifying",
-          message: "Verifying...",
-          loading: true,
-          autoClose: false,
-          withCloseButton: false,
-        })
+      activeNotifications[notificationId] = showNotification({
+        id: notificationId,
+        title: "Verifying",
+        message: "Verifying...",
+        loading: true,
+        autoClose: false,
+        withCloseButton: false,
+      });
     }
-
 
     updateNotification({
       id: activeNotifications[notificationId],
       message: data.success!.message,
-    })
-  }
+    });
+  };
 
-  const _onExerciseVerifiedSuccess = (originalCommand: string, data: GitMasteryTaskData) => {
+  const _onExerciseVerifiedSuccess = (
+    originalCommand: string,
+    data: GitMasteryTaskData,
+  ) => {
     if (!currentExercise) {
-      return
+      return;
     }
 
-    const id = `${originalCommand}-${data.exerciseIdentifier}`
-    console.log("verified success", { data })
+    const id = `${originalCommand}-${data.exerciseIdentifier}`;
+    console.log("verified success", { data });
     // check to see if it was success or failure
 
-    // const isSuccess = 
+    // const isSuccess =
     updateNotification({
       id: activeNotifications[id],
       title: "Verification complete.",
@@ -237,9 +258,11 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       icon: <IconInfoCircle size={18} />,
       autoClose: 5000,
       withCloseButton: true,
-    })
+    });
 
-    const { comments, incorrect, correct } = data.completed?.data || {} as { correct: boolean, incorrect: boolean, comments: string }
+    const { comments, incorrect, correct } =
+      data.completed?.data ||
+      ({} as { correct: boolean; incorrect: boolean; comments: string });
 
     if (correct) {
       const modalId = openConfirmModal({
@@ -252,16 +275,16 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         ),
         labels: {
           confirm: "OK",
-          cancel: "Retry"
+          cancel: "Retry",
         },
         onCancel: () => {
           // TOOD: redownload
-          close(modalId)
+          close(modalId);
         },
-        onConfirm: () => close(modalId)
+        onConfirm: () => close(modalId),
         // confirmProps: { children: "OK" },
         // onConfirm: () => { },
-      })
+      });
     }
 
     if (incorrect) {
@@ -275,16 +298,16 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         ),
         labels: {
           confirm: "Continue trying",
-          cancel: "Reset exercise"
+          cancel: "Reset exercise",
         },
         onCancel: () => {
           // TOOD: redownload
           close(modalId);
         },
-        onConfirm: () => close(modalId)
+        onConfirm: () => close(modalId),
         // confirmProps: { children: "OK" },
         // onConfirm: () => { },
-      })
+      });
     }
 
     // cleanup
@@ -296,12 +319,14 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
     // checkVerificationStatus(data.completed!.stdout!)
     rescanDownloadedExercises();
+  };
 
-  }
-
-  const _onExerciseVerifiedFailure = (originalCommand: string, data: GitMasteryTaskData) => {
+  const _onExerciseVerifiedFailure = (
+    originalCommand: string,
+    data: GitMasteryTaskData,
+  ) => {
     // TODO: Show a toast OR show a success
-    const id = `${originalCommand}-${data.exerciseIdentifier}`
+    const id = `${originalCommand}-${data.exerciseIdentifier}`;
     updateNotification({
       id: activeNotifications[id],
       title: "Verification failed",
@@ -310,14 +335,11 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       icon: <IconInfoCircle color="red" size={18} />,
       autoClose: 5000,
       withCloseButton: true,
-    })
+    });
 
     delete activeNotifications[id];
-
-
-
-  }
-  const { } = useElectronStream({
+  };
+  const {} = useElectronStream({
     condition: (cmd: string) => cmd.startsWith("verify"),
     onData: _onExerciseVerifyData,
     onSuccessExit: _onExerciseVerifiedSuccess,
@@ -325,7 +347,20 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   });
 
   return (
-    <ActivityContext.Provider value={{ currentLesson, currentExercise, startExercise, endExercise, startLesson, endLesson, getActivityText, isDoingActivity, endActivity, verifyExercise }}>
+    <ActivityContext.Provider
+      value={{
+        currentLesson,
+        currentExercise,
+        startExercise,
+        endExercise,
+        startLesson,
+        endLesson,
+        getActivityText,
+        isDoingActivity,
+        endActivity,
+        verifyExercise,
+      }}
+    >
       {children}
     </ActivityContext.Provider>
   );
@@ -343,5 +378,5 @@ export function useActivity() {
 }
 
 const checkVerificationStatus = (stdout: string) => {
-  console.log({ stdout })
-}
+  console.log({ stdout });
+};

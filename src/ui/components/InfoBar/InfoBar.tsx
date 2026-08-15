@@ -5,4 +5,4 @@ export const InfoBar = () => {
   const { latestMessage } = useGitMasteryTask();
 
   return <Box>{latestMessage}</Box>;
-}
+};

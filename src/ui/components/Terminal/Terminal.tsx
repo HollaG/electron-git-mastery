@@ -30,8 +30,10 @@ const XTermComponent = () => {
     observer.observe(terminalRef.current);
 
     // Setup communication between xterm.js and node-pty via IPC
-    term.onData(data => window.electron.write(data));
-    const removeDataListener = window.electron.onData(data => term.write(data));
+    term.onData((data) => window.electron.write(data));
+    const removeDataListener = window.electron.onData((data) =>
+      term.write(data),
+    );
     return () => {
       observer.disconnect();
       removeDataListener();
@@ -39,12 +41,7 @@ const XTermComponent = () => {
     };
   }, [terminalRef.current]);
 
-  return (
-    <div
-      ref={terminalRef}
-      className="w-full h-full bg-black"
-    />
-  );
+  return <div ref={terminalRef} className="w-full h-full bg-black" />;
 };
 
 export default XTermComponent;

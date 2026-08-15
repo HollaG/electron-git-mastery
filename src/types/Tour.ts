@@ -1,17 +1,17 @@
 export type TourData = {
-  [folder: string]: Tour
-}
+  [folder: string]: Tour;
+};
 
 export type Tour = {
-  folder: string, // tour key
-  title: string,
+  folder: string; // tour key
+  title: string;
   lessons: {
-    [lessonKey: string]: Lesson,
-  }
-}
+    [lessonKey: string]: Lesson;
+  };
+};
 
 export type Lesson = {
-  title: string,
-  tour_name: string,
-  lesson_name: string,
-}
+  title: string;
+  tour_name: string;
+  lesson_name: string;
+};

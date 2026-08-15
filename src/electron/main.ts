@@ -1,5 +1,5 @@
 import { app, BrowserView, BrowserWindow } from "electron";
-import path from 'path';
+import path from "path";
 import { isDev } from "./utils/util.js";
 import { getPreloadPath } from "./pathResolver.js";
 import { setupTerminalIpc } from "./ipc/terminal.js";
@@ -22,8 +22,8 @@ app.on("ready", () => {
     minWidth: 1024,
     minHeight: 680,
     webPreferences: {
-      preload: getPreloadPath()
-    }
+      preload: getPreloadPath(),
+    },
   });
   setupTerminalIpc(mainWindow);
   setupGitmasteryIpc(mainWindow);
@@ -31,10 +31,10 @@ app.on("ready", () => {
   setupConfigIpc(mainWindow);
   setupPrereqIpc();
 
-  console.log("isDev: ", isDev())
+  console.log("isDev: ", isDev());
   if (isDev()) {
     mainWindow.loadURL("http://localhost:5123");
   } else {
-    mainWindow.loadFile(path.join(app.getAppPath(), "/dist-react/index.html"))
+    mainWindow.loadFile(path.join(app.getAppPath(), "/dist-react/index.html"));
   }
-})
+});

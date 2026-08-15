@@ -4,10 +4,10 @@ The desktop app does not store full website URLs. It fetches the public catalogs
 
 ## Catalogs
 
-| Catalog | URL | Hook |
-|---|---|---|
-| Lessons / tours | `https://git-mastery.org/lessons/lessons.json` | `useCustomQuery` in `TourList` |
-| Exercises | `https://git-mastery.org/exercises-directory/exercises.json` | `useExercises` |
+| Catalog         | URL                                                          | Hook                           |
+| --------------- | ------------------------------------------------------------ | ------------------------------ |
+| Lessons / tours | `https://git-mastery.org/lessons/lessons.json`               | `useCustomQuery` in `TourList` |
+| Exercises       | `https://git-mastery.org/exercises-directory/exercises.json` | `useExercises`                 |
 
 Each lesson object in both catalogs looks like:
 
@@ -25,10 +25,10 @@ The catalogs used to ship a `path` field (e.g. `"path": "lessons/gitPrep"`). Tha
 
 Helpers live in `src/ui/context/useWebContentsView.tsx`:
 
-| Page | Builder | Example |
-|---|---|---|
-| Lesson | `buildLessonUrl` | `https://git-mastery.org/lessons/gitPrep/` |
-| Exercise | `buildExerciseUrl` | `https://git-mastery.org/lessons/init/exercise-under-control` |
+| Page      | Builder            | Example                                                        |
+| --------- | ------------------ | -------------------------------------------------------------- |
+| Lesson    | `buildLessonUrl`   | `https://git-mastery.org/lessons/gitPrep/`                     |
+| Exercise  | `buildExerciseUrl` | `https://git-mastery.org/lessons/init/exercise-under-control`  |
 | Tour home | `buildTourHomeUrl` | `https://git-mastery.org/lessons/trail/recordingFolderHistory` |
 
 `buildExerciseUrl` reads `lesson_name` from `exercise.lesson`, or from `exercise.detour.lesson` when the exercise is detour-only.

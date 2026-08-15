@@ -10,9 +10,9 @@ To replace it, overwrite `resources/icon.png` (a square PNG, ideally 1024×1024)
 
 ## Where images belong
 
-| Kind of image | Location |
-|---|---|
-| Packaged app icon (Dock, installer, `.exe`) | `resources/` |
-| Images shown in the React UI | `src/ui/assets/` |
+| Kind of image                               | Location         |
+| ------------------------------------------- | ---------------- |
+| Packaged app icon (Dock, installer, `.exe`) | `resources/`     |
+| Images shown in the React UI                | `src/ui/assets/` |
 
 Do not put the app icon in `src/ui/assets/` or a Vite `public/` folder — those paths ship into the renderer bundle, and the icon is only needed at package time.
