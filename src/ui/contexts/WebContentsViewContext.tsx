@@ -5,15 +5,13 @@ import {
   useContext,
   type ReactNode,
 } from "react";
-import type { Lesson, Tour } from "../../types/Tour";
 import type { Exercise } from "../../types/Exercise";
 
-const SITE_ORIGIN = "https://git-mastery.org";
+export const SITE_ORIGIN = "https://git-mastery.org";
+export const LESSONS_HOME_URL = `${SITE_ORIGIN}/lessons/`;
 
 type WebContentsViewState = {
   currentUrl: string | null;
-  breadcrumbs: string[];
-  setBreadcrumbs: (crumbs: string[]) => void;
   navigate: (url: string) => void;
   hide: () => void;
   show: () => void;
@@ -22,28 +20,21 @@ type WebContentsViewState = {
 const WebContentsViewContext = createContext<WebContentsViewState | null>(null);
 
 export function WebContentsViewProvider({ children }: { children: ReactNode }) {
-  const [currentUrl, setCurrentUrl] = useState<string | null>("");
-  const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
-  const [isVisible, setIsVisible] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
 
   const hide = useCallback(() => {
-    setIsVisible(false);
     window.electron.hide();
   }, []);
 
   const show = useCallback(() => {
-    setIsVisible(true);
     window.electron.show();
   }, []);
 
   const navigate = useCallback(
     (url: string) => {
-      setBreadcrumbs(url.replace(`${SITE_ORIGIN}/`, "").split("/"));
       setCurrentUrl(url);
       window.electron.navigate(url);
-
       console.log("navigate called", url);
-
       show();
     },
     [show],
@@ -51,7 +42,7 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
 
   return (
     <WebContentsViewContext.Provider
-      value={{ currentUrl, breadcrumbs, setBreadcrumbs, navigate, hide, show }}
+      value={{ currentUrl, navigate, hide, show }}
     >
       {children}
     </WebContentsViewContext.Provider>
@@ -71,14 +62,6 @@ export function useWebContentsView() {
     );
   }
   return context;
-}
-
-export function buildLessonUrl(lesson: Lesson) {
-  return `${SITE_ORIGIN}/lessons/${lesson.lesson_name}/`;
-}
-
-export function buildTourHomeUrl(tour: Tour) {
-  return `${SITE_ORIGIN}/lessons/trail/${tour.folder}`;
 }
 
 function lessonNameForExercise(exercise: Exercise) {

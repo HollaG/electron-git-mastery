@@ -1,22 +1,26 @@
+import { Flex, Loader, Stack, Text } from "@mantine/core";
+import { useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  Badge,
-  Box,
-  Breadcrumbs,
-  Center,
-  Flex,
-  Image,
-  Text,
-} from "@mantine/core";
-import { useEffect, useRef } from "react";
-import { useWebContentsView } from "../../contexts/WebContentsViewContext";
-import { formatBreadcrumb } from "../../utils/format";
-import logo from "../../assets/logo.png";
+  LESSONS_HOME_URL,
+  useWebContentsView,
+} from "../../contexts/WebContentsViewContext";
 
 export const WebsiteWrapper = () => {
   const webViewRef = useRef<HTMLDivElement>(null);
+  const hasNavigatedRef = useRef(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { currentUrl, breadcrumbs } = useWebContentsView();
+  const { navigate } = useWebContentsView();
+
+  useEffect(() => {
+    if (hasNavigatedRef.current) return;
+    hasNavigatedRef.current = true;
+    navigate(LESSONS_HOME_URL);
+  }, [navigate]);
+
+  useEffect(() => {
+    return window.electron.onWcvLoading(setIsLoading);
+  }, []);
 
   useEffect(() => {
     if (!webViewRef.current) return;
@@ -83,42 +87,18 @@ export const WebsiteWrapper = () => {
 
   return (
     <Flex direction={"column"} className="w-full grow">
-      <Box p="md">
-        <Breadcrumbs>
-          {/* Map all except last one */}
-          {breadcrumbs.slice(0, -1).map((breadcrumb, index) => (
-            <Text variant="subheading" size="sm" key={index}>
-              {formatBreadcrumb(breadcrumb).toUpperCase()}
-            </Text>
-          ))}
-
-          {breadcrumbs.length > 0 ? (
-            <Badge>
-              {formatBreadcrumb(breadcrumbs[breadcrumbs.length - 1])}
-            </Badge>
-          ) : (
-            <></>
-          )}
-        </Breadcrumbs>
-      </Box>
       <Flex
         ref={webViewRef}
         id="webcontentsview-placeholder"
         className="w-full h-full grow justify-center items-center"
       >
-        {currentUrl ? (
-          <></>
-        ) : (
-          <Alert
-            className="scale-125"
-            variant="light"
-            color="gm-green"
-            icon={<Image src={logo} alt="Git Mastery" />}
-            title="Get started with lessons or exercises"
-          >
-            Choose a tour from the left sidebar, or download an exercise and
-            start doing it!
-          </Alert>
+        {isLoading && (
+          <Stack align="center" gap="sm">
+            <Loader color="gm-green" />
+            <Text c="dimmed" size="sm">
+              Loading lessons...
+            </Text>
+          </Stack>
         )}
       </Flex>
     </Flex>

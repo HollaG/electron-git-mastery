@@ -3,7 +3,6 @@ import { useCustomQuery } from "./useCustomQuery";
 
 export const useExercises = () => {
   // const localExcersises TODO: this should be loaded from
-
   const query = useCustomQuery<Exercises>({
     queryKey: ["exercises"],
     queryUrl: "https://git-mastery.org/exercises-directory/exercises.json",

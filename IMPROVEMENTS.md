@@ -10,5 +10,6 @@
 ## Potential Future Improvements
 
 1. Create automated release CI pipeline (use semantic versioning)
-2. Improve setup flow
+2. Improve setup flow UI/UX
 3. UI/UX can still be improved
+4. Add unit tests

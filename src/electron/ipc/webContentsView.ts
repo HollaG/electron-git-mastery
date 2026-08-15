@@ -2,13 +2,73 @@ import { WebContentsView, BrowserWindow, screen } from "electron";
 import { ipcMainOn } from "../utils/util.js";
 import { getWcvPreloadPath } from "../pathResolver.js";
 import { _download, _verify } from "./gitmastery.js";
-import { verify } from "crypto";
 import { getMainWindow } from "../main.js";
+import { sendToRenderer } from "./ipcUtils.js";
+
+const EMBED_CSS = `
+  header .navbar,
+  header nav.navbar,
+  footer {
+    display: none !important;
+  }
+  #flex-body > #site-nav,
+  #page-nav,
+  .toggle-page-nav-button {
+    display: none !important;
+  }
+  .fixed-header-padding {
+    padding-top: 50px !important;
+  }
+  .lower-navbar-container {
+    display: block !important;
+    height: 50px !important;
+    border: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+  .nav-menu-open {
+    width: min(320px, calc(100vw - 16px)) !important;
+    height: auto !important;
+    max-height: min(70vh, 640px) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border: 1px solid #ddd;
+    border-radius: 0 0 8px 8px;
+    z-index: 1000;
+  }
+  .nav-menu-open .mb-mobile-nav,
+  .nav-menu-open #site-nav {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    border: none !important;
+  }
+  .site-nav-list li:has(a[href*="/lessons/trail/all.html"]) {
+    display: none !important;
+  }
+`;
 
 let wcv: WebContentsView | null = null;
 
 let isHidden = true;
+let isLoading = false;
 let bounds = { x: 0, y: 0, width: 0, height: 0 };
+
+function applyBounds() {
+  if (!wcv) return;
+  if (isHidden || isLoading) {
+    wcv.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+    return;
+  }
+  wcv.setBounds(bounds);
+}
+
+function setLoading(mainWindow: BrowserWindow, loading: boolean) {
+  isLoading = loading;
+  applyBounds();
+  sendToRenderer(mainWindow, "wcv-loading", { loading });
+}
 
 function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
   if (!wcv) {
@@ -22,20 +82,36 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
     });
 
     mainWindow.contentView.addChildView(wcv);
+    wcv.setBackgroundColor("#ffffff");
 
+    wcv.webContents.on("did-start-navigation", (details) => {
+      if (!details.isMainFrame || details.isSameDocument) return;
+      setLoading(mainWindow, true);
+    });
     wcv.webContents.on("dom-ready", () => {
-      console.log("finished loading internal view");
-      wcv!.webContents.insertCSS(`
-        nav { display: none !important; }
+      void wcv!.webContents.insertCSS(EMBED_CSS);
+      void wcv!.webContents.executeJavaScript(`
+        (() => {
+          if (window.__gmTourMenu) return;
+          window.__gmTourMenu = true;
+          const descriptor = Object.getOwnPropertyDescriptor(Window.prototype, "innerWidth");
+          if (!descriptor || !descriptor.get) return;
+          const getInnerWidth = descriptor.get;
+          Object.defineProperty(window, "innerWidth", {
+            configurable: true,
+            enumerable: true,
+            get() { return Math.min(getInnerWidth.call(this), 991); }
+          });
+          window.dispatchEvent(new Event("resize"));
+        })()
       `);
-
-      // every time the dom changes, run these functions:
-      // 1. Replace all `ex-download-info-XX` divs with a button saying "Download exercise"
-      // 2. When that button is clicked, send an ipc message to `main` (captured by `gitmastery.ts`)
-      // --> the command is `gitmastery download ${exerciseIdentifier}`
+    });
+    wcv.webContents.on("did-finish-load", async () => {
+      await wcv!.webContents.insertCSS(EMBED_CSS).catch(() => {});
+      setLoading(mainWindow, false);
     });
 
-    injectDownloadExercise(mainWindow, () => {});
+    injectDownloadExercise(mainWindow);
     injectVerifyExercise(mainWindow);
   }
   return wcv;
@@ -48,10 +124,7 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
  *
  * Returns a cleanup function that removes the dom-ready listener.
  */
-function injectDownloadExercise(
-  mainWindow: BrowserWindow,
-  onStartExercise: (exerciseId: string) => void,
-) {
+function injectDownloadExercise(mainWindow: BrowserWindow) {
   const wcv = getOrCreateWcv(mainWindow);
 
   // Listen for IPC messages sent from the WCV page via window.wcvBridge.send()
@@ -223,7 +296,7 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
         height: height / scalingFactor,
       };
 
-      if (!isHidden) {
+      if (!isHidden && !isLoading) {
         getOrCreateWcv(mainWindow).setBounds(bounds);
       }
     },
@@ -231,25 +304,21 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
 
   ipcMainOn("wcv-show", () => {
     console.log("[info] wcv-show event received");
-    const wcv = getOrCreateWcv(mainWindow);
-    wcv.setBounds(bounds);
+    getOrCreateWcv(mainWindow);
     isHidden = false;
+    applyBounds();
   });
 
   ipcMainOn("wcv-navigate", ({ url }: { url: string }) => {
     console.log("[info] wcv-navigate event received");
+    setLoading(mainWindow, true);
     getOrCreateWcv(mainWindow).webContents.loadURL(url);
-    // injectCustomElements(mainWindow, (exerciseId) => {
-    //   // TODO: call your gitmastery start-exercise function here
-    //   console.log("[wcv] navigate", exerciseId)
-    // })
   });
 
   // Temporarily hide the wcv, whenever we need to display a full screen modal.
   ipcMainOn("wcv-hide", () => {
-    // reset to default
-    getOrCreateWcv(mainWindow).setBounds({ x: 0, y: 0, width: 0, height: 0 });
     isHidden = true;
+    applyBounds();
   });
 
   // Clean up when the window is closed

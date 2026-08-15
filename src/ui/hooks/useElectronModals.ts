@@ -1,6 +1,3 @@
-// We need to disable the webcontentsview whenever a modal opens.
-// Thus, we need to extend the functionality of the `@mantine/modals` hook.
-
 import { useModals } from "@mantine/modals";
 import { useWebContentsView } from "../contexts/WebContentsViewContext";
 
@@ -27,5 +24,10 @@ export const useElectronModals = () => {
     show();
   };
 
-  return { open, close, openConfirmModal, closeAll: modals.closeAll };
+  const closeAll = () => {
+    modals.closeAll();
+    show();
+  };
+
+  return { open, close, openConfirmModal, closeAll };
 };

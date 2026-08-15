@@ -1,25 +1,16 @@
 import {
   Box,
-  Title,
   Button,
   SimpleGrid,
   Flex,
   Divider,
   Center,
-  Burger,
-  Group,
+  Text,
 } from "@mantine/core";
 import { useActivity } from "../../contexts/ActivityContext";
-import { Text } from "@mantine/core";
 import { SettingsMenu } from "./SettingsMenu";
 
-export const Header = ({
-  navbarOpened,
-  onToggleNavbar,
-}: {
-  navbarOpened: boolean;
-  onToggleNavbar: () => void;
-}) => {
+export const Header = () => {
   const { getActivityText, isDoingActivity, endActivity, verifyExercise } =
     useActivity();
 
@@ -29,10 +20,7 @@ export const Header = ({
       p="md"
       className="flex items-center justify-between h-16"
     >
-      <Group gap="sm">
-        <Burger opened={navbarOpened} onClick={onToggleNavbar} size="sm" />
-        <Title order={4}> GitMastery </Title>
-      </Group>
+      <Box />
       <Box>
         {isDoingActivity && (
           <Flex
