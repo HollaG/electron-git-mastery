@@ -463,6 +463,32 @@ export const _verify = (mainWindow: BrowserWindow, exerciseIdentifier: string) =
   });
 }
 
+// Resolves the directory the user should work in for a given exercise.
+// Handles both flat layouts (files at the exercise root, e.g. fork-repo) and
+// nested layouts (a single cloned repo subfolder). Recomputed from disk on
+// every Start, so it self-heals if the user moves folders. Never throws;
+// returns null only when the exercise has not been downloaded.
+const resolveExerciseCwd = (exerciseRoot: string): string | null => {
+  if (!fs.existsSync(exerciseRoot)) return null;
+
+  const isRepo = (p: string) => fs.existsSync(path.join(p, ".git"));
+  if (isRepo(exerciseRoot)) return exerciseRoot; // flat git repo at the root
+
+  const subdirs = fs.readdirSync(exerciseRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+    .map((entry) => entry.name);
+
+  if (subdirs.length === 0) return exerciseRoot; // flat layout, no repo
+  if (subdirs.length === 1) return path.join(exerciseRoot, subdirs[0]); // nested clone
+
+  // Ambiguous: prefer an actual repo, then the conventional `<id>-repo` name,
+  // and only as a last resort fall back to the exercise root itself.
+  const repoSubdir = subdirs.find((dir) => isRepo(path.join(exerciseRoot, dir)));
+  const namedSubdir = subdirs.find((dir) => dir === `${path.basename(exerciseRoot)}-repo`);
+  const chosen = repoSubdir ?? namedSubdir;
+  return chosen ? path.join(exerciseRoot, chosen) : exerciseRoot;
+};
+
 // Handles backend gitmastery ipc events
 // responsible for downloads, verification, etc
 export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
@@ -500,25 +526,13 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
 
   // Command 2: `start` an exercise manually (this function helps the user CD into an exercise)
   ipcMainOn("gitmastery-start-exercise", ({ exerciseIdentifier }: { exerciseIdentifier: string }) => {
-    // this should start an exercise locally.
-    // 1. Check the folder name of the given exerciseIdnetifier
-    // 2. check the first subfolder of the /${exerciseIdentifier}
-    // run `writeToPty('cd ...')
-
-    const exerciseDir = getExerciseDirectory();
-    const exercisePath = path.join(exerciseDir, exerciseIdentifier);
-    const subfolders = fs.readdirSync(exercisePath, { withFileTypes: true })
-      .filter(entry => entry.isDirectory())
-      .map(entry => entry.name);
-    if (subfolders.length === 0) {
-      throw new Error("No subfolders found");
+    const exerciseRoot = path.join(getExerciseDirectory(), exerciseIdentifier);
+    const cwd = resolveExerciseCwd(exerciseRoot);
+    if (!cwd) {
+      console.warn(`[start-exercise] no exercise directory found for "${exerciseIdentifier}" at ${exerciseRoot}`);
+      return;
     }
-    const firstSubfolder = subfolders[0];
-    const exerciseCwd = path.join(exercisePath, firstSubfolder);
-    writeToPty(`cd "${exerciseCwd}"\r`);
-
-
-
+    writeToPty(`cd "${cwd}"\r`);
   })
 
   const dir = getUserStoragePath();
