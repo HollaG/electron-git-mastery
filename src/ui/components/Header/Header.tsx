@@ -1,8 +1,6 @@
 import {
   Box,
   Title,
-  Space,
-  Group,
   Button,
   SimpleGrid,
   Flex,
@@ -11,6 +9,7 @@ import {
 } from "@mantine/core";
 import { useActivity } from "../../context/useActivity";
 import { Text } from "@mantine/core";
+import { SettingsMenu } from "./SettingsMenu";
 
 export const Header = () => {
   const { getActivityText, isDoingActivity, endActivity, verifyExercise } =
@@ -63,7 +62,9 @@ export const Header = () => {
           </Flex>
         )}
       </Box>
-      <Box></Box>
+      <Flex justify="flex-end" align="center">
+        <SettingsMenu />
+      </Flex>
     </SimpleGrid>
   );
 };
