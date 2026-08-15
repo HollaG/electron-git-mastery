@@ -1,6 +1,9 @@
 {
   "appId": "com.nus.gitmastery",
-  "icon": "./desktopIcon.png",
+  "directories": {
+    "buildResources": "resources"
+  },
+  "icon": "icon.png",
   "files": [
     "dist-react",
     "dist-electron"

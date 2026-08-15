@@ -1,6 +1,8 @@
 import { useState, useCallback, createContext, useContext, type ReactNode } from "react"
-import type { Lesson } from "../../types/Tour"
+import type { Lesson, Tour } from "../../types/Tour"
 import type { Exercise } from "../../types/Exercise";
+
+const SITE_ORIGIN = "https://git-mastery.org"
 
 type WebContentsViewState = {
   currentUrl: string | null;
@@ -19,7 +21,7 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
   const [isVisible, setIsVisible] = useState(false);
 
   const navigate = useCallback((url: string) => {
-    setBreadcrumbs(url.replace("https://git-mastery.org/", "").split("/"))
+    setBreadcrumbs(url.replace(`${SITE_ORIGIN}/`, "").split("/"))
     setCurrentUrl(url)
     window.electron.navigate(url)
 
@@ -60,21 +62,22 @@ export function useWebContentsView() {
 }
 
 export function buildLessonUrl(lesson: Lesson) {
-  return `https://git-mastery.org/${lesson.path}`
+  return `${SITE_ORIGIN}/lessons/${lesson.lesson_name}/`
+}
+
+export function buildTourHomeUrl(tour: Tour) {
+  return `${SITE_ORIGIN}/lessons/trail/${tour.folder}`
+}
+
+function lessonNameForExercise(exercise: Exercise) {
+  return exercise.lesson?.lesson_name ?? exercise.detour?.lesson?.lesson_name
 }
 
 export function buildExerciseUrl(exercise: Exercise) {
-
-  if (exercise.lesson) {
-    console.log(`[webview] navigating to exercise ${exercise.lesson?.path}/${exercise.identifier}`)
-    return `https://git-mastery.org/${exercise.lesson?.path}/exercise-${exercise.identifier}`
-
+  const lessonName = lessonNameForExercise(exercise)
+  if (!lessonName) {
+    return SITE_ORIGIN
   }
 
-  if (exercise.detour) {
-    console.log(`[webview] navigating to detour ${exercise.detour?.lesson?.path}/${exercise.identifier}`)
-    return `https://git-mastery.org/${exercise.detour?.lesson?.path}/exercise-${exercise.identifier}`
-  }
-
-  return `https://git-mastery.org`
+  return `${SITE_ORIGIN}/lessons/${lessonName}/exercise-${exercise.identifier}`
 }

@@ -1,0 +1,7 @@
+node_modules
+dist
+dist-react
+dist-electron
+build
+.mypy_cache
+package-lock.json

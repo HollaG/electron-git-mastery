@@ -8,10 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev          # Run React dev server (port 5123) + Electron main in parallel
 npm run build        # Compile TypeScript + bundle React (required before dist)
 npm run lint         # ESLint (flat config, TypeScript plugin)
+npm run format       # Prettier --write (see .prettierrc.json)
 
 npm run transpile:electron  # Compile only the Electron main process
-npm run dev:react           # Vite dev server only (port 5123)
-npm run dev:electron        # Transpile + launch Electron only
 
 npm run dist:mac     # Package for macOS arm64
 npm run dist:win     # Package for Windows x64
@@ -39,7 +38,7 @@ Git-Mastery Desktop is an Electron app that provides an interactive learning env
 
 **Context bridge** (`src/electron/preload.cts`): Typed API wrapping all IPC channels. The renderer never calls `ipcRenderer` directly. All handler types live in `src/electron/preload.cts` and are referenced from `src/ui/` via `window.electron.*`.
 
-**WebContentsView** (`src/electron/ipc/webContentsView.ts`): Separate sandboxed view (not the main BrowserWindow) for displaying git-mastery.org. Has its own preload (`wcv-preload.cts`). Injected JS replaces download buttons with IPC-driven handlers. The renderer controls its position/size via `window.electron.setContentsViewSize(x, y, w, h)`.
+**WebContentsView** (`src/electron/ipc/webContentsView.ts`): Separate sandboxed view (not the main BrowserWindow) for displaying git-mastery.org. Has its own preload (`wcv-preload.cts`). Injected JS replaces download buttons with IPC-driven handlers. The renderer controls its position/size via `window.electron.setContentsViewSize(x, y, w, h)`. Lesson/exercise page URLs are built from catalog `lesson_name` fields (not a `path` field) in `src/ui/context/useWebContentsView.tsx`. See `docs/development/website-urls.md`.
 
 ### IPC Patterns
 

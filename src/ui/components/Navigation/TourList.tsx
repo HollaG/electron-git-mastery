@@ -2,7 +2,7 @@ import { Box, Button, Collapse, Flex, Stack, Text, Tooltip } from "@mantine/core
 import { useDisclosure } from "@mantine/hooks"
 import type { Lesson, Tour, TourData } from "../../../types/Tour"
 import { useCustomQuery } from "../../hooks/query/useCustomQuery"
-import { buildLessonUrl, useWebContentsView } from "../../context/useWebContentsView"
+import { buildLessonUrl, buildTourHomeUrl, useWebContentsView } from "../../context/useWebContentsView"
 import { IconChevronCompactDown, IconChevronDown } from "@tabler/icons-react"
 
 import { NavigationButton } from "./NavigationButton/NavigationButton"
@@ -52,7 +52,7 @@ const TourItem = ({ tour, index }: { tour: Tour, index: number }) => {
       </Button>
     </Tooltip >
     <Collapse in={opened} p="8px" w={"100%"}>
-      {buildLesson({ path: `lessons/trail/${tour.folder}`, title: "Tour Home" }, navigate)}
+      <NavigationButton title="Tour Home" onClick={() => navigate(buildTourHomeUrl(tour))} />
       {Object.values(tour.lessons).map(lesson => buildLesson(lesson, navigate))}
     </Collapse>
   </Flex >
