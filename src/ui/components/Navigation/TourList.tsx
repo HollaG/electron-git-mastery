@@ -14,7 +14,7 @@ import {
   buildLessonUrl,
   buildTourHomeUrl,
   useWebContentsView,
-} from "../../context/useWebContentsView";
+} from "../../contexts/WebContentsViewContext";
 import { IconChevronCompactDown, IconChevronDown } from "@tabler/icons-react";
 
 import { NavigationButton } from "./NavigationButton/NavigationButton";

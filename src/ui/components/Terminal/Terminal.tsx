@@ -24,8 +24,13 @@ const XTermComponent = () => {
     });
 
     // Refit xterm when the container element resizes
+    let fitRaf = 0;
     const observer = new ResizeObserver(() => {
-      fitAddon.fit();
+      if (fitRaf) return;
+      fitRaf = requestAnimationFrame(() => {
+        fitRaf = 0;
+        fitAddon.fit();
+      });
     });
     observer.observe(terminalRef.current);
 
@@ -35,6 +40,7 @@ const XTermComponent = () => {
       term.write(data),
     );
     return () => {
+      cancelAnimationFrame(fitRaf);
       observer.disconnect();
       removeDataListener();
       term.dispose();

@@ -22,10 +22,9 @@ import { useElectronModals } from "../hooks/useElectronModals";
 import { Button, Checkbox, Flex, Stack, Text } from "@mantine/core";
 import { formatExerciseTitle } from "../utils/format";
 import { showNotification, updateNotification } from "@mantine/notifications";
-import { IconCheck, IconInfoCircle } from "@tabler/icons-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { useElectronStream } from "../hooks/useElectronStream";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
-import { buildExerciseUrl, useWebContentsView } from "./useWebContentsView";
 
 type ActivityState = {
   currentLesson: Lesson | null;
@@ -52,7 +51,6 @@ const ActivityContext = createContext<ActivityState | null>(null);
 const activeNotifications: Record<string, any> = {};
 
 export function ActivityProvider({ children }: { children: ReactNode }) {
-  const { navigate } = useWebContentsView();
   const { openConfirmModal, open, close } = useElectronModals();
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);

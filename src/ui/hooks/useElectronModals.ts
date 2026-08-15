@@ -2,7 +2,7 @@
 // Thus, we need to extend the functionality of the `@mantine/modals` hook.
 
 import { useModals } from "@mantine/modals";
-import { useWebContentsView } from "../context/useWebContentsView";
+import { useWebContentsView } from "../contexts/WebContentsViewContext";
 
 export const useElectronModals = () => {
   const modals = useModals();

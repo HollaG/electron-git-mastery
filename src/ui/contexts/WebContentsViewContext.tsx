@@ -26,16 +26,6 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
   const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
   const [isVisible, setIsVisible] = useState(false);
 
-  const navigate = useCallback((url: string) => {
-    setBreadcrumbs(url.replace(`${SITE_ORIGIN}/`, "").split("/"));
-    setCurrentUrl(url);
-    window.electron.navigate(url);
-
-    console.log("navigate called", url);
-
-    show();
-  }, []);
-
   const hide = useCallback(() => {
     setIsVisible(false);
     window.electron.hide();
@@ -45,6 +35,19 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
     setIsVisible(true);
     window.electron.show();
   }, []);
+
+  const navigate = useCallback(
+    (url: string) => {
+      setBreadcrumbs(url.replace(`${SITE_ORIGIN}/`, "").split("/"));
+      setCurrentUrl(url);
+      window.electron.navigate(url);
+
+      console.log("navigate called", url);
+
+      show();
+    },
+    [show],
+  );
 
   return (
     <WebContentsViewContext.Provider

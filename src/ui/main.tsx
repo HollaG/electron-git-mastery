@@ -36,11 +36,11 @@ const theme = createTheme({
   },
 });
 
-import { WebContentsViewProvider } from "./context/useWebContentsView";
+import { WebContentsViewProvider } from "./contexts/WebContentsViewContext";
 import { Notifications } from "@mantine/notifications";
-import { ActivityProvider } from "./context/useActivity.tsx";
+import { ActivityProvider } from "./contexts/ActivityContext";
 import { ModalsProvider } from "@mantine/modals";
-import { GitMasteryTaskProvider } from "./contexts/GitMasteryTaskContext.tsx";
+import { GitMasteryTaskProvider } from "./contexts/GitMasteryTaskContext";
 
 const queryClient = new QueryClient();
 createRoot(document.getElementById("root")!).render(

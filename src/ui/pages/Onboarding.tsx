@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useWebContentsView } from "../context/useWebContentsView";
+import { useWebContentsView } from "../contexts/WebContentsViewContext";
 import {
   Accordion,
   Alert,

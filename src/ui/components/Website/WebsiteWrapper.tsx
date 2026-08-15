@@ -9,7 +9,7 @@ import {
   Text,
 } from "@mantine/core";
 import { useEffect, useRef } from "react";
-import { useWebContentsView } from "../../context/useWebContentsView";
+import { useWebContentsView } from "../../contexts/WebContentsViewContext";
 import { formatBreadcrumb } from "../../utils/format";
 import logo from "../../assets/logo.png";
 
@@ -40,16 +40,17 @@ export const WebsiteWrapper = () => {
       const physW = Math.round(width * dpr);
       const physH = Math.round(height * dpr);
 
-      console.log({
-        css: { x, y, width, height },
-        dpr,
-        physical: { x: physX, y: physY, width: physW, height: physH },
-      });
       window.electron.setContentsViewSize(physX, physY, physW, physH);
     }
 
-    // Re-send bounds whenever the element is resized.
-    const resizeObserver = new ResizeObserver(sendBounds);
+    let boundsRaf = 0;
+    const resizeObserver = new ResizeObserver(() => {
+      if (boundsRaf) return;
+      boundsRaf = requestAnimationFrame(() => {
+        boundsRaf = 0;
+        sendBounds();
+      });
+    });
     resizeObserver.observe(webViewRef.current);
 
     // Re-send bounds when the window moves to a monitor with a different
@@ -74,6 +75,7 @@ export const WebsiteWrapper = () => {
     watchDpr();
 
     return () => {
+      cancelAnimationFrame(boundsRaf);
       resizeObserver.disconnect();
       dprCleanup?.();
     };

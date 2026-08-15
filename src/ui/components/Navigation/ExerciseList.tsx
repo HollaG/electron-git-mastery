@@ -14,14 +14,14 @@ import {
   buildExerciseUrl,
   buildLessonUrl,
   useWebContentsView,
-} from "../../context/useWebContentsView";
+} from "../../contexts/WebContentsViewContext";
 import { useExercises } from "../../hooks/query/useExercises";
 import { useMemo, useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { showNotification, updateNotification } from "@mantine/notifications";
 import { NavigationButton } from "./NavigationButton/NavigationButton";
 import type { Exercise } from "../../../types/Exercise";
-import { useActivity } from "../../context/useActivity";
+import { useActivity } from "../../contexts/ActivityContext";
 import { useElectronModals } from "../../hooks/useElectronModals";
 import { useElectronStream } from "../../hooks/useElectronStream";
 import { useLocalExercises } from "../../hooks/query/useLocalExercises";
