@@ -13,39 +13,13 @@ const EMBED_CSS = `
   }
   #flex-body > #site-nav,
   #page-nav,
-  .toggle-page-nav-button {
+  .toggle-page-nav-button,
+  .lower-navbar-container,
+  .toggle-site-nav-button {
     display: none !important;
   }
   .fixed-header-padding {
-    padding-top: 50px !important;
-  }
-  .lower-navbar-container {
-    display: block !important;
-    height: 50px !important;
-    border: none !important;
-    background: transparent !important;
-    overflow: visible !important;
-  }
-  .nav-menu-open {
-    width: min(320px, calc(100vw - 16px)) !important;
-    height: auto !important;
-    max-height: min(70vh, 640px) !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    border: 1px solid #ddd;
-    border-radius: 0 0 8px 8px;
-    z-index: 1000;
-  }
-  .nav-menu-open .mb-mobile-nav,
-  .nav-menu-open #site-nav {
-    display: block !important;
-    position: static !important;
-    width: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
-    border: none !important;
-  }
-  .site-nav-list li:has(a[href*="/lessons/trail/all.html"]) {
-    display: none !important;
+    padding-top: 0 !important;
   }
 `;
 
@@ -90,21 +64,6 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
     });
     wcv.webContents.on("dom-ready", () => {
       void wcv!.webContents.insertCSS(EMBED_CSS);
-      void wcv!.webContents.executeJavaScript(`
-        (() => {
-          if (window.__gmTourMenu) return;
-          window.__gmTourMenu = true;
-          const descriptor = Object.getOwnPropertyDescriptor(Window.prototype, "innerWidth");
-          if (!descriptor || !descriptor.get) return;
-          const getInnerWidth = descriptor.get;
-          Object.defineProperty(window, "innerWidth", {
-            configurable: true,
-            enumerable: true,
-            get() { return Math.min(getInnerWidth.call(this), 991); }
-          });
-          window.dispatchEvent(new Event("resize"));
-        })()
-      `);
     });
     wcv.webContents.on("did-finish-load", async () => {
       await wcv!.webContents.insertCSS(EMBED_CSS).catch(() => {});

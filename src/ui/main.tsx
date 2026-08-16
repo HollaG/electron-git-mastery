@@ -15,9 +15,16 @@ const theme = createTheme({
     "gm-dark-green": colorsTuple("#717c4d"),
   },
   headings: {
-    fontFamily: "Noto Serif, serif",
+    fontFamily: "Noto Serif, Georgia, serif",
+    fontWeight: "600",
+    sizes: {
+      h1: { fontSize: "2.05rem", lineHeight: "1.3" },
+      h2: { fontSize: "1.45rem", lineHeight: "1.35" },
+      h3: { fontSize: "1.2rem", lineHeight: "1.4" },
+    },
   },
   fontFamily: "Inter, system-ui, sans-serif",
+  black: "#333333",
   components: {
     Text: Text.extend({
       styles: (theme, props) => {

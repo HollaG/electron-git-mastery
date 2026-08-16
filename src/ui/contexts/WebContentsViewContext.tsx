@@ -1,11 +1,13 @@
 import {
   useState,
   useCallback,
+  useRef,
   createContext,
   useContext,
   type ReactNode,
 } from "react";
 import type { Exercise } from "../../types/Exercise";
+import type { Lesson, Tour } from "../../types/Tour";
 
 export const SITE_ORIGIN = "https://git-mastery.org";
 export const LESSONS_HOME_URL = `${SITE_ORIGIN}/lessons/`;
@@ -15,19 +17,32 @@ type WebContentsViewState = {
   navigate: (url: string) => void;
   hide: () => void;
   show: () => void;
+  setEmbeddedVisible: (visible: boolean) => void;
 };
 
 const WebContentsViewContext = createContext<WebContentsViewState | null>(null);
 
 export function WebContentsViewProvider({ children }: { children: ReactNode }) {
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+  const embeddedVisibleRef = useRef(true);
 
   const hide = useCallback(() => {
     window.electron.hide();
   }, []);
 
   const show = useCallback(() => {
-    window.electron.show();
+    if (embeddedVisibleRef.current) {
+      window.electron.show();
+    }
+  }, []);
+
+  const setEmbeddedVisible = useCallback((visible: boolean) => {
+    embeddedVisibleRef.current = visible;
+    if (visible) {
+      window.electron.show();
+    } else {
+      window.electron.hide();
+    }
   }, []);
 
   const navigate = useCallback(
@@ -42,7 +57,7 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
 
   return (
     <WebContentsViewContext.Provider
-      value={{ currentUrl, navigate, hide, show }}
+      value={{ currentUrl, navigate, hide, show, setEmbeddedVisible }}
     >
       {children}
     </WebContentsViewContext.Provider>
@@ -62,6 +77,14 @@ export function useWebContentsView() {
     );
   }
   return context;
+}
+
+export function buildLessonUrl(lesson: Lesson) {
+  return `${SITE_ORIGIN}/lessons/${lesson.lesson_name}/`;
+}
+
+export function buildTourHomeUrl(tour: Tour) {
+  return `${SITE_ORIGIN}/lessons/trail/${tour.folder}`;
 }
 
 function lessonNameForExercise(exercise: Exercise) {

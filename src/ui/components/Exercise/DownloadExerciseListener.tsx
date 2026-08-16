@@ -5,6 +5,7 @@ import { useElectronStream } from "../../hooks/useElectronStream";
 import { useLocalExercises } from "../../hooks/query/useLocalExercises";
 import { useExercises } from "../../hooks/query/useExercises";
 import { useActivity } from "../../contexts/ActivityContext";
+import { useAppView } from "../../contexts/AppViewContext";
 import {
   buildExerciseUrl,
   useWebContentsView,
@@ -23,6 +24,7 @@ export const DownloadExerciseListener = () => {
   const { query: exercisesQuery } = useExercises();
   const { startExercise } = useActivity();
   const { navigate } = useWebContentsView();
+  const { setView } = useAppView();
   const historyLinesRef = useRef<Record<string, string[]>>({});
   const selectedExerciseRef = useRef<Exercise | null>(null);
 
@@ -94,6 +96,7 @@ export const DownloadExerciseListener = () => {
         selectedExerciseRef.current || resolveExercise(data.exerciseIdentifier);
 
       if (selectedExercise) {
+        setView("tours");
         navigate(buildExerciseUrl(selectedExercise));
         startExercise(selectedExercise);
       }
@@ -102,7 +105,13 @@ export const DownloadExerciseListener = () => {
       delete historyLinesRef.current[originalCommand];
       delete activeNotifications[originalCommand];
     },
-    [navigate, resolveExercise, rescanDownloadedExercises, startExercise],
+    [
+      navigate,
+      resolveExercise,
+      rescanDownloadedExercises,
+      setView,
+      startExercise,
+    ],
   );
 
   const onExerciseDownloadFailure = useCallback(

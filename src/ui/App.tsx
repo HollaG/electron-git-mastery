@@ -2,11 +2,14 @@ import { AppShell, Box } from "@mantine/core";
 import TerminalComponent from "./components/Terminal/Terminal";
 import { WebsiteWrapper } from "./components/Website/WebsiteWrapper";
 import { Header } from "./components/Header/Header";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocalStorage } from "@mantine/hooks";
 import { Onboarding } from "./pages/Onboarding";
+import { ExercisesPage } from "./pages/Exercises";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { DownloadExerciseListener } from "./components/Exercise/DownloadExerciseListener";
+import { AppViewProvider, useAppView } from "./contexts/AppViewContext";
+import { useWebContentsView } from "./contexts/WebContentsViewContext";
 
 const MIN_MAIN = 320;
 const MIN_ASIDE = 280;
@@ -17,12 +20,26 @@ function App() {
     defaultValue: false,
   });
 
-  const [asideWidth, setAsideWidth] = useState(512);
-
   if (!onboardingCompleted)
     return (
       <Onboarding onCompleteOnboarding={() => setOnboardingCompleted(true)} />
     );
+
+  return (
+    <AppViewProvider>
+      <MainApp />
+    </AppViewProvider>
+  );
+}
+
+function MainApp() {
+  const { view } = useAppView();
+  const { setEmbeddedVisible } = useWebContentsView();
+  const [asideWidth, setAsideWidth] = useState(512);
+
+  useEffect(() => {
+    setEmbeddedVisible(view === "tours");
+  }, [setEmbeddedVisible, view]);
 
   const asideMax = window.innerWidth - MIN_MAIN;
 
@@ -35,11 +52,21 @@ function App() {
         header={{ height: 64 }}
         aside={{ width: asideWidth, breakpoint: "xs" }}
       >
-        <AppShell.Header bg="gm-bone">
+        <AppShell.Header bg="white" style={{ overflow: "visible", zIndex: 200 }}>
           <Header />
         </AppShell.Header>
-        <AppShell.Main className="flex h-full">
+        <AppShell.Main className="flex h-full" pos="relative">
           <WebsiteWrapper />
+          {view === "exercises" && (
+            <Box
+              pos="absolute"
+              inset={0}
+              bg="white"
+              className="min-w-0 overflow-hidden"
+            >
+              <ExercisesPage />
+            </Box>
+          )}
         </AppShell.Main>
         <AppShell.Aside>
           <Box pos="relative" h="100%">

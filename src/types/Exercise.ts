@@ -11,4 +11,5 @@ export type Exercise = {
     title: string;
   };
   identifier: string;
+  wip?: number;
 };

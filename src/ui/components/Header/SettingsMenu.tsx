@@ -1,4 +1,4 @@
-import { ActionIcon, Menu } from "@mantine/core";
+import { ActionIcon, Menu, Tooltip } from "@mantine/core";
 import { IconSettings } from "@tabler/icons-react";
 import { useLocalStorage } from "@mantine/hooks";
 
@@ -9,12 +9,20 @@ export const SettingsMenu = () => {
   });
 
   return (
-    <Menu shadow="md" width={200} position="bottom-end">
-      <Menu.Target>
-        <ActionIcon variant="subtle" color="dark" aria-label="Settings">
-          <IconSettings size={20} />
-        </ActionIcon>
-      </Menu.Target>
+    <Menu shadow="md" width={220} position="bottom-end">
+      <Tooltip label="Settings" position="bottom">
+        <Menu.Target>
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="lg"
+            radius="xl"
+            aria-label="Settings"
+          >
+            <IconSettings size={18} />
+          </ActionIcon>
+        </Menu.Target>
+      </Tooltip>
 
       <Menu.Dropdown>
         <Menu.Label>Setup</Menu.Label>

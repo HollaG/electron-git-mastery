@@ -1,69 +1,115 @@
 import {
   Box,
   Button,
-  SimpleGrid,
-  Flex,
-  Divider,
   Center,
+  Divider,
+  Flex,
+  Group,
+  SegmentedControl,
   Text,
 } from "@mantine/core";
+import {
+  IconMap,
+  IconChecklist,
+  IconPlayerStop,
+  IconCircleCheck,
+} from "@tabler/icons-react";
 import { useActivity } from "../../contexts/ActivityContext";
+import { useAppView, type AppView } from "../../contexts/AppViewContext";
 import { SettingsMenu } from "./SettingsMenu";
+import { ToursMenu } from "./ToursMenu";
 
 export const Header = () => {
   const { getActivityText, isDoingActivity, endActivity, verifyExercise } =
     useActivity();
+  const { view, setView } = useAppView();
 
   return (
-    <SimpleGrid
-      cols={3}
-      p="md"
-      className="flex items-center justify-between h-16"
+    <Box
+      pos="relative"
+      h="100%"
+      px="md"
+      style={{
+        borderBottom: "1px solid var(--mantine-color-gray-3)",
+        overflow: "visible",
+      }}
     >
-      <Box />
-      <Box>
-        {isDoingActivity && (
-          <Flex
-            px="md"
-            bg="gm-green"
-            w="100%"
-            h="100%"
-            gap={"lg"}
-            className="rounded-3xl py-0.5"
-          >
-            <Center>
-              <Button
-                size="sm"
-                variant="subtle"
-                c="white"
-                onClick={() => endActivity()}
-              >
-                Quit
-              </Button>
-            </Center>
-            <Divider orientation="vertical" />
-            <Center>
-              <Text c="white">{getActivityText()}</Text>
-            </Center>
-            <Divider orientation="vertical" />
-            <Center>
-              <Button
-                size="sm"
-                variant="transparent"
-                c="white"
-                onClick={() => {
-                  verifyExercise({});
-                }}
-              >
-                Check solution
-              </Button>
-            </Center>
-          </Flex>
-        )}
-      </Box>
-      <Flex justify="flex-end" align="center">
+      <Flex h="100%" align="center" justify="space-between">
+        <Flex h="100%" align="center" gap="sm">
+          {view === "tours" && (
+            <div className="h-full flex items-center">
+              <ToursMenu />
+            </div>
+          )}
+          <SegmentedControl
+            value={view}
+            onChange={(value) => setView(value as AppView)}
+            size="sm"
+            radius="xl"
+            color="gm-green"
+            data={[
+              {
+                value: "tours",
+                label: (
+                  <Group gap={6} wrap="nowrap">
+                    <IconMap size={15} />
+                    <span>Lesson Tours</span>
+                  </Group>
+                ),
+              },
+              {
+                value: "exercises",
+                label: (
+                  <Group gap={6} wrap="nowrap">
+                    <IconChecklist size={15} />
+                    <span>Exercises</span>
+                  </Group>
+                ),
+              },
+            ]}
+          />
+        </Flex>
         <SettingsMenu />
       </Flex>
-    </SimpleGrid>
+
+      {isDoingActivity && (
+        <Center pos="absolute" inset={0} style={{ pointerEvents: "none" }}>
+          <Flex
+            px="sm"
+            bg="gm-green"
+            align="center"
+            gap="sm"
+            className="rounded-full py-1 min-w-0 max-w-[min(520px,42vw)] shadow-sm"
+            style={{ pointerEvents: "auto" }}
+          >
+            <Button
+              size="compact-sm"
+              variant="subtle"
+              c="white"
+              leftSection={<IconPlayerStop size={14} />}
+              onClick={() => endActivity()}
+            >
+              Quit
+            </Button>
+            <Divider orientation="vertical" color="rgba(255,255,255,0.35)" />
+            <Text c="white" size="sm" fw={500} truncate className="min-w-0">
+              {getActivityText()}
+            </Text>
+            <Divider orientation="vertical" color="rgba(255,255,255,0.35)" />
+            <Button
+              size="compact-sm"
+              variant="white"
+              color="gm-green"
+              leftSection={<IconCircleCheck size={14} />}
+              onClick={() => {
+                verifyExercise({});
+              }}
+            >
+              Check solution
+            </Button>
+          </Flex>
+        </Center>
+      )}
+    </Box>
   );
 };
