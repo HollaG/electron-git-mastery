@@ -19,7 +19,13 @@ import { useAppView, type AppView } from "../../contexts/AppViewContext";
 import { SettingsMenu } from "./SettingsMenu";
 import { ToursMenu } from "./ToursMenu";
 
-export const Header = () => {
+export const Header = ({
+  lessonsPanelOpened,
+  onToggleLessonsPanel,
+}: {
+  lessonsPanelOpened: boolean;
+  onToggleLessonsPanel: () => void;
+}) => {
   const { getActivityText, isDoingActivity, endActivity, verifyExercise } =
     useActivity();
   const { view, setView } = useAppView();
@@ -38,7 +44,10 @@ export const Header = () => {
         <Flex h="100%" align="center" gap="sm">
           {view === "tours" && (
             <div className="h-full flex items-center">
-              <ToursMenu />
+              <ToursMenu
+                opened={lessonsPanelOpened}
+                onToggle={onToggleLessonsPanel}
+              />
             </div>
           )}
           <SegmentedControl

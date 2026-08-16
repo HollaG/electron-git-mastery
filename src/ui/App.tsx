@@ -2,6 +2,7 @@ import { AppShell, Box } from "@mantine/core";
 import TerminalComponent from "./components/Terminal/Terminal";
 import { WebsiteWrapper } from "./components/Website/WebsiteWrapper";
 import { Header } from "./components/Header/Header";
+import { ToursPanel } from "./components/Header/ToursMenu";
 import { useEffect, useState } from "react";
 import { useLocalStorage } from "@mantine/hooks";
 import { Onboarding } from "./pages/Onboarding";
@@ -37,6 +38,7 @@ function MainApp() {
   const { view } = useAppView();
   const { setEmbeddedVisible } = useWebContentsView();
   const [asideWidth, setAsideWidth] = useState(512);
+  const [lessonsPanelOpened, setLessonsPanelOpened] = useState(false);
 
   useEffect(() => {
     setEmbeddedVisible(view === "tours");
@@ -51,14 +53,30 @@ function MainApp() {
         padding={0}
         transitionDuration={0}
         header={{ height: HEADER_HEIGHT }}
+        navbar={{
+          width: 300,
+          breakpoint: "xs",
+          collapsed: {
+            desktop: !lessonsPanelOpened || view !== "tours",
+            mobile: !lessonsPanelOpened || view !== "tours",
+          },
+        }}
         aside={{ width: asideWidth, breakpoint: "xs" }}
       >
         <AppShell.Header
           bg="white"
           style={{ overflow: "visible", zIndex: 200 }}
         >
-          <Header />
+          <Header
+            lessonsPanelOpened={lessonsPanelOpened}
+            onToggleLessonsPanel={() =>
+              setLessonsPanelOpened((opened) => !opened)
+            }
+          />
         </AppShell.Header>
+        <AppShell.Navbar>
+          <ToursPanel onMinimize={() => setLessonsPanelOpened(false)} />
+        </AppShell.Navbar>
         <AppShell.Main className="flex h-dvh flex-col overflow-hidden">
           <Box pos="relative" className="flex min-h-0 min-w-0 flex-1 flex-col">
             <WebsiteWrapper />

@@ -1,17 +1,20 @@
 import {
+  ActionIcon,
   Box,
   Button,
   Collapse,
   Flex,
-  ActionIcon,
-  Popover,
   ScrollArea,
   Stack,
   Text,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconChevronDown, IconMenu2, IconX } from "@tabler/icons-react";
-import { useState } from "react";
+import {
+  IconChevronDown,
+  IconChevronLeft,
+  IconMenu2,
+  IconX,
+} from "@tabler/icons-react";
 import type { Lesson, Tour, TourData } from "../../../types/Tour";
 import {
   buildLessonUrl,
@@ -21,80 +24,92 @@ import {
 import { useCustomQuery } from "../../hooks/query/useCustomQuery";
 import { useAppView } from "../../contexts/AppViewContext";
 
-export const ToursMenu = () => {
-  const [opened, setOpened] = useState(false);
+export const ToursMenu = ({
+  opened,
+  onToggle,
+}: {
+  opened: boolean;
+  onToggle: () => void;
+}) => {
+  return (
+    <ActionIcon
+      variant="subtle"
+      color="gray"
+      size="lg"
+      radius="xl"
+      aria-label={opened ? "Minimize lessons panel" : "Open lessons panel"}
+      aria-expanded={opened}
+      onClick={onToggle}
+    >
+      {opened ? <IconX size={18} /> : <IconMenu2 size={18} />}
+    </ActionIcon>
+  );
+};
+
+export const ToursPanel = ({ onMinimize }: { onMinimize: () => void }) => {
   const { data: tourList, isLoading } = useCustomQuery<TourData>({
     queryKey: ["tour_list"],
     queryUrl: "https://git-mastery.org/lessons/lessons.json",
   });
-  const { navigate, hide, show } = useWebContentsView();
+  const { navigate } = useWebContentsView();
   const { setView } = useAppView();
-
-  const setOpen = (next: boolean) => {
-    if (next) {
-      hide();
-      setOpened(true);
-      return;
-    }
-    setOpened(false);
-    show();
-  };
 
   const tours = tourList
     ? Object.values(tourList).filter((tour) => tour.folder !== "all")
     : [];
 
   return (
-    <Popover
-      opened={opened}
-      onChange={setOpen}
-      position="bottom-start"
-      shadow="md"
-      width={300}
-      withinPortal
-      zIndex={10000}
-      closeOnClickOutside
-      closeOnEscape
-    >
-      <Popover.Target>
+    <Flex direction="column" h="100%" bg="white">
+      <Flex
+        align="center"
+        justify="space-between"
+        px="md"
+        h={54}
+        className="shrink-0 border-b border-gray-200"
+      >
+        <Text fw={600}>Lessons</Text>
         <ActionIcon
           variant="subtle"
           color="gray"
-          size="lg"
-          radius="xl"
-          aria-label="Tours"
-          aria-expanded={opened}
+          aria-label="Minimize lessons panel"
+          onClick={onMinimize}
         >
-          {opened ? <IconX size={18} /> : <IconMenu2 size={18} />}
+          <IconChevronLeft size={18} />
         </ActionIcon>
-      </Popover.Target>
-      <Popover.Dropdown p={0}>
-        <ScrollArea.Autosize mah={420}>
-          <Stack gap={4} p="sm">
-            <Text size="sm" fw={600} c="dimmed">
-              Tours
+      </Flex>
+      <ScrollArea className="min-h-0 flex-1">
+        <Stack gap={4} p="sm">
+          <Text size="sm" fw={600} c="dimmed">
+            Tours
+          </Text>
+          {isLoading && (
+            <Text size="sm" c="dimmed">
+              Loading…
             </Text>
-            {isLoading && (
-              <Text size="sm" c="dimmed">
-                Loading…
-              </Text>
-            )}
-            {tours.map((tour) => (
-              <TourItem
-                key={tour.folder}
-                tour={tour}
-                onNavigate={(url) => {
-                  setView("tours");
-                  setOpen(false);
-                  navigate(url);
-                }}
-              />
-            ))}
-          </Stack>
-        </ScrollArea.Autosize>
-      </Popover.Dropdown>
-    </Popover>
+          )}
+          {tours.map((tour) => (
+            <TourItem
+              key={tour.folder}
+              tour={tour}
+              onNavigate={(url) => {
+                setView("tours");
+                navigate(url);
+              }}
+            />
+          ))}
+        </Stack>
+      </ScrollArea>
+    </Flex>
   );
+};
+
+const nestedLinkStyles = {
+  root: {
+    height: "auto",
+    paddingTop: 10,
+    paddingBottom: 10,
+    lineHeight: 1.5,
+  },
 };
 
 const TourItem = ({
@@ -142,6 +157,7 @@ const TourItem = ({
           fullWidth
           justify="flex-start"
           size="compact-sm"
+          styles={nestedLinkStyles}
           onClick={() => onNavigate(buildTourHomeUrl(tour))}
         >
           Tour Home
@@ -172,6 +188,7 @@ const LessonItem = ({
       fullWidth
       justify="flex-start"
       size="compact-sm"
+      styles={nestedLinkStyles}
       onClick={() => onNavigate(buildLessonUrl(lesson))}
     >
       {lesson.title}
