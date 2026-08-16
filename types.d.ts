@@ -16,6 +16,7 @@ interface Window {
     hide: () => void;
     show: () => void;
     onWcvLoading: (callback: (loading: boolean) => void) => () => void;
+    onWcvUrlChanged: (callback: (url: string) => void) => () => void;
 
     // for configuration
     setExeLocation: (location: string) => void;
@@ -62,6 +63,7 @@ type IpcHandlerChannelMapping = {
   "wcv-size": { x: number; y: number; width: number; height: number };
   "wcv-hide": null;
   "wcv-loading": { loading: boolean };
+  "wcv-url-changed": { url: string };
 
   // to be saved on backend to run the exe if needed (Win)
   "set-exe-location": { location: string };

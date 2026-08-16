@@ -96,9 +96,9 @@ export const DownloadExerciseListener = () => {
         selectedExerciseRef.current || resolveExercise(data.exerciseIdentifier);
 
       if (selectedExercise) {
-        setView("tours");
-        navigate(buildExerciseUrl(selectedExercise));
         startExercise(selectedExercise);
+        setView("exercises");
+        navigate(buildExerciseUrl(selectedExercise));
       }
 
       selectedExerciseRef.current = null;

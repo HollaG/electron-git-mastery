@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld("electron", {
   show: () => ipcSend("wcv-show", null),
   onWcvLoading: (callback: (loading: boolean) => void) =>
     ipcOn("wcv-loading", ({ loading }) => callback(loading)),
+  onWcvUrlChanged: (callback: (url: string) => void) =>
+    ipcOn("wcv-url-changed", ({ url }) => callback(url)),
 
   // Config
   setExeLocation: (location: string) =>

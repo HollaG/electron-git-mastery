@@ -58,10 +58,16 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
     mainWindow.contentView.addChildView(wcv);
     wcv.setBackgroundColor("#ffffff");
 
+    const emitUrl = () => {
+      const url = wcv?.webContents.getURL();
+      if (url) sendToRenderer(mainWindow, "wcv-url-changed", { url });
+    };
     wcv.webContents.on("did-start-navigation", (details) => {
       if (!details.isMainFrame || details.isSameDocument) return;
       setLoading(mainWindow, true);
     });
+    wcv.webContents.on("did-navigate", emitUrl);
+    wcv.webContents.on("did-navigate-in-page", emitUrl);
     wcv.webContents.on("dom-ready", () => {
       void wcv!.webContents.insertCSS(EMBED_CSS);
     });

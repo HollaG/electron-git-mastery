@@ -17,7 +17,6 @@ import type { Exercise } from "../../types/Exercise";
 import { useExercises } from "../hooks/query/useExercises";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
 import { useActivity } from "../contexts/ActivityContext";
-import { useAppView } from "../contexts/AppViewContext";
 import {
   buildExerciseUrl,
   useWebContentsView,
@@ -46,7 +45,6 @@ export const ExercisesPage = () => {
   const { query: exercisesQuery } = useExercises();
   const { downloadedExerciseData } = useLocalExercises();
   const { currentExercise, startExercise } = useActivity();
-  const { setView } = useAppView();
   const { navigate } = useWebContentsView();
 
   const [search, setSearch] = useState("");
@@ -121,9 +119,8 @@ export const ExercisesPage = () => {
   }, [filteredExercises]);
 
   const openExercise = (exercise: Exercise) => {
-    navigate(buildExerciseUrl(exercise));
     startExercise(exercise);
-    setView("tours");
+    navigate(buildExerciseUrl(exercise));
   };
 
   const downloadExercise = (exercise: Exercise) => {

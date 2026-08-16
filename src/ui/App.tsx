@@ -10,6 +10,7 @@ import { ExercisesPage } from "./pages/Exercises";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { DownloadExerciseListener } from "./components/Exercise/DownloadExerciseListener";
 import { AppViewProvider, useAppView } from "./contexts/AppViewContext";
+import { useActivity } from "./contexts/ActivityContext";
 import { useWebContentsView } from "./contexts/WebContentsViewContext";
 
 const MIN_MAIN = 320;
@@ -36,13 +37,17 @@ function App() {
 
 function MainApp() {
   const { view } = useAppView();
+  const { currentExercise } = useActivity();
   const { setEmbeddedVisible } = useWebContentsView();
   const [asideWidth, setAsideWidth] = useState(512);
   const [lessonsPanelOpened, setLessonsPanelOpened] = useState(false);
+  const showExercisesCatalog = view === "exercises" && !currentExercise;
+  const showEmbedded =
+    view === "tours" || (view === "exercises" && Boolean(currentExercise));
 
   useEffect(() => {
-    setEmbeddedVisible(view === "tours");
-  }, [setEmbeddedVisible, view]);
+    setEmbeddedVisible(showEmbedded);
+  }, [setEmbeddedVisible, showEmbedded]);
 
   const asideMax = window.innerWidth - MIN_MAIN;
 
@@ -80,7 +85,7 @@ function MainApp() {
         <AppShell.Main className="flex h-dvh flex-col overflow-hidden">
           <Box pos="relative" className="flex min-h-0 min-w-0 flex-1 flex-col">
             <WebsiteWrapper />
-            {view === "exercises" && (
+            {showExercisesCatalog && (
               <Box
                 pos="absolute"
                 inset={0}

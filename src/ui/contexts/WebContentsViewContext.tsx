@@ -2,6 +2,7 @@ import {
   useState,
   useCallback,
   useRef,
+  useEffect,
   createContext,
   useContext,
   type ReactNode,
@@ -15,6 +16,7 @@ export const LESSONS_HOME_URL = `${SITE_ORIGIN}/lessons/`;
 type WebContentsViewState = {
   currentUrl: string | null;
   navigate: (url: string) => void;
+  restoreLessonPage: () => void;
   hide: () => void;
   show: () => void;
   setEmbeddedVisible: (visible: boolean) => void;
@@ -22,9 +24,21 @@ type WebContentsViewState = {
 
 const WebContentsViewContext = createContext<WebContentsViewState | null>(null);
 
+const isExerciseUrl = (url: string) => /\/exercise-/.test(url);
+
 export function WebContentsViewProvider({ children }: { children: ReactNode }) {
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+  const currentUrlRef = useRef<string | null>(null);
   const embeddedVisibleRef = useRef(true);
+  const lastLessonUrlRef = useRef(LESSONS_HOME_URL);
+
+  const rememberUrl = useCallback((url: string) => {
+    currentUrlRef.current = url;
+    setCurrentUrl(url);
+    if (!isExerciseUrl(url)) {
+      lastLessonUrlRef.current = url;
+    }
+  }, []);
 
   const hide = useCallback(() => {
     window.electron.hide();
@@ -47,17 +61,36 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
 
   const navigate = useCallback(
     (url: string) => {
-      setCurrentUrl(url);
+      if (currentUrlRef.current === url) {
+        show();
+        return;
+      }
+      rememberUrl(url);
       window.electron.navigate(url);
       console.log("navigate called", url);
       show();
     },
-    [show],
+    [rememberUrl, show],
   );
+
+  const restoreLessonPage = useCallback(() => {
+    navigate(lastLessonUrlRef.current || LESSONS_HOME_URL);
+  }, [navigate]);
+
+  useEffect(() => {
+    return window.electron.onWcvUrlChanged(rememberUrl);
+  }, [rememberUrl]);
 
   return (
     <WebContentsViewContext.Provider
-      value={{ currentUrl, navigate, hide, show, setEmbeddedVisible }}
+      value={{
+        currentUrl,
+        navigate,
+        restoreLessonPage,
+        hide,
+        show,
+        setEmbeddedVisible,
+      }}
     >
       {children}
     </WebContentsViewContext.Provider>
@@ -84,7 +117,11 @@ export function buildLessonUrl(lesson: Lesson) {
 }
 
 export function buildTourHomeUrl(tour: Tour) {
-  return `${SITE_ORIGIN}/lessons/trail/${tour.folder}`;
+  return buildTourHomeUrlFromName(tour.folder);
+}
+
+export function buildTourHomeUrlFromName(tourName: string) {
+  return `${SITE_ORIGIN}/lessons/trail/${tourName}`;
 }
 
 function lessonNameForExercise(exercise: Exercise) {

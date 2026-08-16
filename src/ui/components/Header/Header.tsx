@@ -16,6 +16,10 @@ import {
 } from "@tabler/icons-react";
 import { useActivity } from "../../contexts/ActivityContext";
 import { useAppView, type AppView } from "../../contexts/AppViewContext";
+import {
+  buildExerciseUrl,
+  useWebContentsView,
+} from "../../contexts/WebContentsViewContext";
 import { SettingsMenu } from "./SettingsMenu";
 import { ToursMenu } from "./ToursMenu";
 
@@ -26,9 +30,29 @@ export const Header = ({
   lessonsPanelOpened: boolean;
   onToggleLessonsPanel: () => void;
 }) => {
-  const { getActivityText, isDoingActivity, endActivity, verifyExercise } =
-    useActivity();
+  const {
+    currentExercise,
+    getActivityText,
+    isDoingActivity,
+    endActivity,
+    verifyExercise,
+  } = useActivity();
   const { view, setView } = useAppView();
+  const { navigate, restoreLessonPage } = useWebContentsView();
+
+  const handleViewChange = (value: string) => {
+    const nextView = value as AppView;
+    setView(nextView);
+
+    if (nextView === "tours") {
+      restoreLessonPage();
+      return;
+    }
+
+    if (nextView === "exercises" && currentExercise) {
+      navigate(buildExerciseUrl(currentExercise));
+    }
+  };
 
   return (
     <Box
@@ -52,7 +76,7 @@ export const Header = ({
           )}
           <SegmentedControl
             value={view}
-            onChange={(value) => setView(value as AppView)}
+            onChange={handleViewChange}
             size="sm"
             radius="xl"
             color="gm-green"
