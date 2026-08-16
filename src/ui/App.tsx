@@ -13,6 +13,7 @@ import { useWebContentsView } from "./contexts/WebContentsViewContext";
 
 const MIN_MAIN = 320;
 const MIN_ASIDE = 280;
+const HEADER_HEIGHT = 64;
 
 function App() {
   const [onboardingCompleted, setOnboardingCompleted] = useLocalStorage({
@@ -47,26 +48,31 @@ function MainApp() {
     <>
       <DownloadExerciseListener />
       <AppShell
-        padding="md"
+        padding={0}
         transitionDuration={0}
-        header={{ height: 64 }}
+        header={{ height: HEADER_HEIGHT }}
         aside={{ width: asideWidth, breakpoint: "xs" }}
       >
-        <AppShell.Header bg="white" style={{ overflow: "visible", zIndex: 200 }}>
+        <AppShell.Header
+          bg="white"
+          style={{ overflow: "visible", zIndex: 200 }}
+        >
           <Header />
         </AppShell.Header>
-        <AppShell.Main className="flex h-full" pos="relative">
-          <WebsiteWrapper />
-          {view === "exercises" && (
-            <Box
-              pos="absolute"
-              inset={0}
-              bg="white"
-              className="min-w-0 overflow-hidden"
-            >
-              <ExercisesPage />
-            </Box>
-          )}
+        <AppShell.Main className="flex h-dvh flex-col overflow-hidden">
+          <Box pos="relative" className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <WebsiteWrapper />
+            {view === "exercises" && (
+              <Box
+                pos="absolute"
+                inset={0}
+                bg="white"
+                className="min-w-0 overflow-hidden"
+              >
+                <ExercisesPage />
+              </Box>
+            )}
+          </Box>
         </AppShell.Main>
         <AppShell.Aside>
           <Box pos="relative" h="100%">

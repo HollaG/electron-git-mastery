@@ -86,7 +86,7 @@ export const WebsiteWrapper = () => {
   }, [webViewRef]);
 
   return (
-    <Flex direction={"column"} className="w-full grow">
+    <Flex direction={"column"} className="h-full w-full min-h-0 grow">
       <Flex
         ref={webViewRef}
         id="webcontentsview-placeholder"
