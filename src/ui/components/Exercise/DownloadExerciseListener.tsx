@@ -93,7 +93,7 @@ export const DownloadExerciseListener = () => {
       });
 
       const selectedExercise =
-        selectedExerciseRef.current || resolveExercise(data.exerciseIdentifier);
+        resolveExercise(data.exerciseIdentifier) ?? selectedExerciseRef.current;
 
       if (selectedExercise) {
         startExercise(selectedExercise);
@@ -101,7 +101,11 @@ export const DownloadExerciseListener = () => {
         navigate(buildExerciseUrl(selectedExercise));
       }
 
-      selectedExerciseRef.current = null;
+      if (
+        selectedExerciseRef.current?.identifier === selectedExercise?.identifier
+      ) {
+        selectedExerciseRef.current = null;
+      }
       progressRef.current.delete(originalCommand);
     },
     [
@@ -129,10 +133,16 @@ export const DownloadExerciseListener = () => {
         withCloseButton: true,
       });
 
-      selectedExerciseRef.current = null;
+      const failedExercise = resolveExercise(data.exerciseIdentifier);
+      if (
+        failedExercise &&
+        selectedExerciseRef.current?.identifier === failedExercise.identifier
+      ) {
+        selectedExerciseRef.current = null;
+      }
       progressRef.current.delete(originalCommand);
     },
-    [],
+    [resolveExercise],
   );
 
   useElectronStream({

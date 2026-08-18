@@ -71,9 +71,14 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
     wcv.webContents.on("dom-ready", () => {
       void wcv!.webContents.insertCSS(EMBED_CSS);
     });
+    wcv.webContents.on("did-fail-load", () => {
+      setLoading(mainWindow, false);
+    });
+    wcv.webContents.on("did-stop-loading", () => {
+      setLoading(mainWindow, false);
+    });
     wcv.webContents.on("did-finish-load", async () => {
       await wcv!.webContents.insertCSS(EMBED_CSS).catch(() => {});
-      setLoading(mainWindow, false);
     });
 
     injectDownloadExercise(mainWindow);
