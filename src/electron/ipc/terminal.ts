@@ -68,6 +68,12 @@ function resolveShell(): string {
 
 let ptyProcess: pty.IPty;
 
+/**
+ * Commands issued before the shell exists (e.g. an exercise started while the
+ * terminal is still mounting) so they can be replayed once it spawns.
+ */
+let pendingCommands: string[] = [];
+
 /** Tracks the current working directory of the pty process. */
 let cwd: string = process.env.HOME || process.env.USERPROFILE || os.homedir();
 
@@ -107,6 +113,20 @@ export function writeToPty(data: string) {
   }
 }
 
+/**
+ * Runs a command in the terminal on the app's behalf. `\x15` clears anything the
+ * user has half-typed at the prompt, which would otherwise be prepended to the
+ * command. If the shell has not spawned yet the command is replayed on spawn.
+ */
+export function runCommandInPty(command: string) {
+  if (!ptyProcess) {
+    pendingCommands.push(command);
+    return;
+  }
+  updateCwdFromCdCommand(`${command}\r`);
+  ptyProcess.write(`\x15${command}\r`);
+}
+
 // This handles the simulated git terminal
 export function setupTerminalIpc(mainWindow: BrowserWindow) {
   // Handle pty spawn request from renderer
@@ -129,9 +149,21 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
       env: process.env,
     });
 
+    // Queued commands are replayed on the shell's first output rather than
+    // immediately after spawn, since shells discard input written before they
+    // finish setting up their line editor.
+    let hasReplayedQueue = false;
+
     ptyProcess.onData((data) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("pty-data", data);
+      }
+
+      if (!hasReplayedQueue) {
+        hasReplayedQueue = true;
+        const queued = pendingCommands;
+        pendingCommands = [];
+        queued.forEach(runCommandInPty);
       }
     });
   });

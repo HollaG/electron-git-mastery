@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -12,7 +12,13 @@ import {
   Title,
   UnstyledButton,
 } from "@mantine/core";
-import { IconDownload, IconPlayerPlay, IconSearch } from "@tabler/icons-react";
+import {
+  IconDownload,
+  IconFolder,
+  IconPlayerPlay,
+  IconSearch,
+} from "@tabler/icons-react";
+import { showNotification } from "@mantine/notifications";
 import type { Exercise } from "../../types/Exercise";
 import { useExercises } from "../hooks/query/useExercises";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
@@ -101,12 +107,6 @@ export const ExercisesPage = () => {
     ).length;
   }, [allExercises, downloadedIds]);
 
-  useEffect(() => {
-    for (const id of downloadedIds) {
-      clearPending(id);
-    }
-  }, [clearPending, downloadedIds]);
-
   const groupedExercises = useMemo(() => {
     const groups = new Map<string, Exercise[]>();
     for (const exercise of filteredExercises) {
@@ -123,9 +123,35 @@ export const ExercisesPage = () => {
     navigate(buildExerciseUrl(exercise));
   };
 
-  const downloadExercise = (exercise: Exercise) => {
+  const downloadExercise = async (exercise: Exercise) => {
+    const { dataDirectory } = await window.electron.checkExerciseFolder();
+    if (!dataDirectory) {
+      showNotification({
+        title: "No save location yet",
+        message:
+          "Open Settings and choose where exercise files should live, then download again.",
+        color: "yellow",
+        icon: <IconFolder size={18} />,
+        autoClose: 8000,
+      });
+      return;
+    }
+
     setPendingDownloads((prev) => new Set(prev).add(exercise.identifier));
-    window.electron.startGitMasteryTask(`download ${exercise.identifier}`);
+    try {
+      await window.electron.startGitMasteryTask(
+        `download ${exercise.identifier}`,
+      );
+    } catch {
+      clearPending(exercise.identifier);
+      showNotification({
+        title: "Could not start the download",
+        message: "Check the Setup checklist in Settings and try again.",
+        color: "red",
+        icon: <IconFolder size={18} />,
+        autoClose: 8000,
+      });
+    }
   };
 
   const onDownloadSettled = useCallback(
@@ -147,7 +173,7 @@ export const ExercisesPage = () => {
       openExercise(exercise);
       return;
     }
-    downloadExercise(exercise);
+    void downloadExercise(exercise);
   };
 
   if (exercisesQuery.isLoading) {
@@ -239,7 +265,10 @@ export const ExercisesPage = () => {
                       isActive={
                         currentExercise?.identifier === exercise.identifier
                       }
-                      isDownloading={pendingDownloads.has(exercise.identifier)}
+                      isDownloading={
+                        pendingDownloads.has(exercise.identifier) &&
+                        !downloadedIds.has(exercise.identifier)
+                      }
                       isDownloaded={downloadedIds.has(exercise.identifier)}
                       onSelect={() => handleSelect(exercise)}
                     />

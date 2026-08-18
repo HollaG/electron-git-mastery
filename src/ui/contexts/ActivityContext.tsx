@@ -4,8 +4,12 @@
 // 1. Keep track of the current activity
 // 2. Start and end activities
 // -- Communicate to the backend to set the working directory, etc.
-// 3. Track activity duration (TODO)
-// 4. Verify `Exercise` correctness and handle notifications
+// 3. Report verification progress and results
+//
+// Verification can also be triggered by the Verify button injected into the
+// embedded exercise page, which talks to the main process directly. Everything
+// here is therefore keyed off the exercise identifier in the stream payload
+// rather than off the current activity.
 
 import {
   useState,
@@ -16,37 +20,32 @@ import {
 } from "react";
 import type { Exercise } from "../../types/Exercise";
 import { useLocalStorage } from "@mantine/hooks";
-import { useElectronModals } from "../hooks/useElectronModals";
+import { useModals } from "@mantine/modals";
 import { Button, Checkbox, Flex, Stack, Text } from "@mantine/core";
-import { formatExerciseTitle } from "../utils/format";
-import { showNotification, updateNotification } from "@mantine/notifications";
+import {
+  showNotification,
+  updateNotification,
+  type NotificationData,
+} from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useElectronStream } from "../hooks/useElectronStream";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
 
 type ActivityState = {
   currentExercise: Exercise | null;
-  isDoingActivity: boolean;
   startExercise: (exercise: Exercise) => void;
-  endExercise: () => void;
-  getActivityText: () => string;
   endActivity: () => void;
-  verifyExercise: ({
-    showProgress,
-    callback,
-  }: {
-    showProgress?: boolean;
-    callback?: () => void;
-  }) => boolean;
 };
 
 const ActivityContext = createContext<ActivityState | null>(null);
 
-// temporary map to track open verify notifications by id
-const activeNotifications: Record<string, boolean> = {};
+const isVerifyCommand = (cmd: string) => cmd.startsWith("verify");
+
+const verifyNotificationId = (data: GitMasteryTaskData) =>
+  `verify-${data.exerciseIdentifier ?? "exercise"}`;
 
 export function ActivityProvider({ children }: { children: ReactNode }) {
-  const { openConfirmModal, open, close } = useElectronModals();
+  const { openModal, closeModal } = useModals();
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
 
   const [showOnboardingExercise, setShowOnboardingExercise] = useLocalStorage({
@@ -58,16 +57,39 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   const { rescanDownloadedExercises } = useLocalExercises();
 
+  /** Verify notifications currently on screen, keyed by notification id. */
+  const openVerifyNotifications = useRef<Set<string>>(new Set());
+
+  /**
+   * Moves the terminal into the exercise's working directory. Verification runs
+   * in whatever directory the terminal is in, so a failure here has to be
+   * surfaced rather than swallowed.
+   */
+  const enterExerciseDirectory = async (exercise: Exercise) => {
+    const result = await window.electron.startExercise(exercise.identifier);
+    if (result.ok) return;
+
+    showNotification({
+      title: "Could not open the exercise folder",
+      message:
+        result.error ??
+        "Try downloading the exercise again from the exercises list.",
+      color: "red",
+      icon: <IconInfoCircle size={18} />,
+      autoClose: 8000,
+    });
+  };
+
   const startExercise = (exercise: Exercise) => {
     setCurrentExercise(exercise);
+    void enterExerciseDirectory(exercise);
 
     if (showOnboardingExercise) {
-      const modalId = open({
+      const modalId = openModal({
         title: "Exercise",
         children: (
           <Stack>
             <Text>
-              {" "}
               You are about to begin doing an exercise. Work through the
               exercise in the terminal and click Verify when you think you are
               done.
@@ -77,8 +99,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
             <Flex justify={"end"}>
               <Button
                 onClick={() => {
-                  close(modalId);
-                  window.electron.startExercise(exercise.identifier);
+                  closeModal(modalId);
                   if (showOnboardingRef.current) {
                     setShowOnboardingExercise(
                       !showOnboardingRef.current.checked,
@@ -92,70 +113,37 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
           </Stack>
         ),
       });
-    } else {
-      window.electron.startExercise(exercise.identifier);
     }
-  };
-
-  const endExercise = () => {
-    setCurrentExercise(null);
   };
 
   const endActivity = () => {
     setCurrentExercise(null);
   };
 
-  const getActivityText = () => {
-    if (currentExercise) {
-      return formatExerciseTitle(currentExercise);
-    }
-    return "";
-  };
-
-  const isDoingActivity = currentExercise !== null;
-
-  const exerciseVerifyCallbackRef = useRef<() => void>(null);
-
   /**
-   * Begins the process of verifying the current exercise.
-   * Note that we should only show the notification WHEN the backend has started verifying the exercise.
-   *
-   * @param [showProgress=true] - Whether to show the progress toast
-   * @param callback - Callback function to be called when the exercise is verified
-   *
-   * @returns true if exercise has began verifying, false if not
+   * Closes off a verify notification, creating it first if the run finished
+   * before any progress output arrived.
    */
-  const verifyExercise = ({
-    showProgress = true,
-    callback = () => {},
-  }: {
-    showProgress?: boolean;
-    callback?: () => void;
-  }) => {
-    if (!currentExercise) {
-      return false;
+  const settleVerifyNotification = (
+    notification: NotificationData & { id: string },
+  ) => {
+    if (openVerifyNotifications.current.delete(notification.id)) {
+      updateNotification(notification);
+    } else {
+      showNotification(notification);
     }
-    void showProgress;
-    exerciseVerifyCallbackRef.current = callback;
-    window.electron.startGitMasteryTask(`verify ${currentExercise.identifier}`);
-    return true;
   };
 
   const _onExerciseVerifyData = (
-    originalCommand: string,
+    _originalCommand: string,
     data: GitMasteryTaskData,
   ) => {
-    if (!data.exerciseIdentifier) return;
-    if (!currentExercise) {
-      // we cannot verify if there is no exercise selected (assume that an exercise selected --> we are cd'ed into a folder (required for verify to work))
-      return;
-    }
-    const notificationId = `${originalCommand}-${data.exerciseIdentifier}`;
+    const id = verifyNotificationId(data);
 
-    if (!activeNotifications[notificationId]) {
-      activeNotifications[notificationId] = true;
+    if (!openVerifyNotifications.current.has(id)) {
+      openVerifyNotifications.current.add(id);
       showNotification({
-        id: notificationId,
+        id,
         title: "Verifying",
         message: "Verifying...",
         loading: true,
@@ -164,25 +152,15 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    updateNotification({
-      id: notificationId,
-      message: data.success!.message,
-    });
+    updateNotification({ id, message: data.success!.message });
   };
 
   const _onExerciseVerifiedSuccess = (
-    originalCommand: string,
+    _originalCommand: string,
     data: GitMasteryTaskData,
   ) => {
-    if (!currentExercise) {
-      return;
-    }
-
-    const id = `${originalCommand}-${data.exerciseIdentifier}`;
-    console.log("verified success", { data });
-
-    updateNotification({
-      id,
+    settleVerifyNotification({
+      id: verifyNotificationId(data),
       title: "Verification complete.",
       message: "",
       loading: false,
@@ -192,77 +170,54 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       withCloseButton: true,
     });
 
-    const { comments, incorrect, correct } =
-      data.completed?.data ||
-      ({} as { correct: boolean; incorrect: boolean; comments: string });
+    const { comments, incorrect, correct } = (data.completed?.data ?? {}) as {
+      correct?: boolean;
+      incorrect?: boolean;
+      comments?: string;
+    };
 
-    if (correct) {
-      const modalId = openConfirmModal({
-        title: "Exercise completed successfully!",
+    if (correct || incorrect) {
+      const modalId = openModal({
+        title: correct
+          ? "Exercise completed successfully!"
+          : "Exercise solution incorrect",
         children: (
           <Stack>
-            <Text> You successfully completed the exercise!</Text>
-            <Text> {comments as string}</Text>
+            <Text>
+              {correct
+                ? "You successfully completed the exercise!"
+                : "Your solution is not correct yet. Keep going and verify again when you are ready."}
+            </Text>
+            {comments && <Text>{comments}</Text>}
+            <Flex justify="end">
+              <Button onClick={() => closeModal(modalId)}>OK</Button>
+            </Flex>
           </Stack>
         ),
-        labels: {
-          confirm: "OK",
-          cancel: "Retry",
-        },
-        onCancel: () => {
-          close(modalId);
-        },
-        onConfirm: () => close(modalId),
       });
     }
-
-    if (incorrect) {
-      const modalId = openConfirmModal({
-        title: "Exercise solution incorrect!",
-        children: (
-          <Stack>
-            <Text> Your solution is incorrect!</Text>
-            <Text> {comments as string}</Text>
-          </Stack>
-        ),
-        labels: {
-          confirm: "Continue trying",
-          cancel: "Reset exercise",
-        },
-        onCancel: () => {
-          close(modalId);
-        },
-        onConfirm: () => close(modalId),
-      });
-    }
-
-    delete activeNotifications[id];
-
-    exerciseVerifyCallbackRef.current?.();
-    exerciseVerifyCallbackRef.current = null;
 
     rescanDownloadedExercises();
   };
 
   const _onExerciseVerifiedFailure = (
-    originalCommand: string,
+    _originalCommand: string,
     data: GitMasteryTaskData,
   ) => {
-    const id = `${originalCommand}-${data.exerciseIdentifier}`;
-    updateNotification({
-      id,
+    settleVerifyNotification({
+      id: verifyNotificationId(data),
       title: "Verification failed",
-      message: "",
+      message: data.completed?.message ?? "Please try again",
       loading: false,
-      icon: <IconInfoCircle color="red" size={18} />,
+      color: "red",
+      icon: <IconInfoCircle size={18} />,
       autoClose: 5000,
       withCloseButton: true,
     });
-
-    delete activeNotifications[id];
   };
+
   useElectronStream({
-    condition: (cmd: string) => cmd.startsWith("verify"),
+    condition: isVerifyCommand,
     onData: _onExerciseVerifyData,
     onSuccessExit: _onExerciseVerifiedSuccess,
     onFailedExit: _onExerciseVerifiedFailure,
@@ -273,11 +228,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       value={{
         currentExercise,
         startExercise,
-        endExercise,
-        getActivityText,
-        isDoingActivity,
         endActivity,
-        verifyExercise,
       }}
     >
       {children}

@@ -1,12 +1,11 @@
 import { ActionIcon, Menu, Tooltip } from "@mantine/core";
-import { IconSettings } from "@tabler/icons-react";
-import { useLocalStorage } from "@mantine/hooks";
+import { useModals } from "@mantine/modals";
+import { IconChecklist, IconFolder, IconSettings } from "@tabler/icons-react";
+import { FileLocationPanel } from "../Setup/FileLocationPanel";
+import { SetupChecklist } from "../Setup/SetupChecklist";
 
 export const SettingsMenu = () => {
-  const [, setOnboardingCompleted] = useLocalStorage({
-    key: "onboarding-completed",
-    defaultValue: false,
-  });
+  const { openModal } = useModals();
 
   return (
     <Menu shadow="md" width={220} position="bottom-end">
@@ -27,10 +26,28 @@ export const SettingsMenu = () => {
       <Menu.Dropdown>
         <Menu.Label>Setup</Menu.Label>
         <Menu.Item
-          leftSection={<IconSettings size={14} />}
-          onClick={() => setOnboardingCompleted(false)}
+          leftSection={<IconFolder size={14} />}
+          onClick={() =>
+            openModal({
+              title: "Configure file location",
+              size: "lg",
+              children: <FileLocationPanel />,
+            })
+          }
         >
-          Setup GitMastery
+          Configure file location
+        </Menu.Item>
+        <Menu.Item
+          leftSection={<IconChecklist size={14} />}
+          onClick={() =>
+            openModal({
+              title: "Setup",
+              size: "lg",
+              children: <SetupChecklist />,
+            })
+          }
+        >
+          Setup
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

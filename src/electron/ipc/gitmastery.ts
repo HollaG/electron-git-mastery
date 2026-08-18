@@ -2,16 +2,15 @@ import { BrowserWindow } from "electron";
 import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
-import { ipcMainHandle, ipcMainOn } from "../utils/util.js";
+import { ipcMainHandle } from "../utils/util.js";
 import { getConfig, getUserStoragePath } from "../storage.js";
 import { logGM } from "../utils/logger.js";
-import { downloadGitMasteryExe } from "../utils/win32/downloadExe.js";
 import {
   getEnvironmentWithHomebrew,
   getExerciseDirectory,
   getGitMasteryExecutable,
 } from "../utils/cli/getters.js";
-import { getCwd, writeToPty } from "./terminal.js";
+import { getCwd, runCommandInPty } from "./terminal.js";
 import { sendToRenderer } from "./ipcUtils.js";
 
 const GM_TASK_DATA_CHANNEL = "gitmastery-task-data" as const;
@@ -51,17 +50,6 @@ const writeToFile = (
 // The below handles the functions for GitMastery invocation
 // -----------------------
 
-const validateCommand = (command: string) => {
-  const validCommands = ["setup", "download"];
-
-  const commandParts = command.split(" ");
-  const commandName = commandParts[0];
-
-  if (!validCommands.includes(commandName)) {
-    throw new Error("Invalid command");
-  }
-};
-
 // TODO: handle the CWD (it fails when the exercise directory doesn't exist, so we have to ahndle this special case
 // but should we have a better way of handling it)
 const _spawnChildProcess = ({
@@ -83,10 +71,22 @@ const _setup = async (mainWindow: BrowserWindow) => {
 
   console.log({ exeLocation, dataDirectory });
 
-  // 1. Check if the data directory exists
+  // 1. Check if the data directory exists.
+  // Reported as a failed task rather than thrown, so the renderer settles the
+  // same way it does for any other setup failure.
   if (!dataDirectory || !fs.existsSync(dataDirectory)) {
     console.log("error: data directory not found");
-    throw new Error("Exercise directory not found");
+    sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+      originalCommand: "setup",
+      data: {
+        completed: {
+          status: "failure",
+          message:
+            "No save location configured. Choose where exercise files should live first.",
+        },
+      },
+    });
+    return;
   }
 
   // 2a. Check if the exe exists (windows only) — auto-download if missing
@@ -181,9 +181,11 @@ const _setup = async (mainWindow: BrowserWindow) => {
         // Failure
 
         const taskPayload: GitMasteryTaskData = {
-          error: {
-            message: "Setup failed! Please try again (TODO)",
-            code: 500,
+          completed: {
+            status: "failure",
+            message: stderrBuffer || "Setup failed! Please try again",
+            stdout: stdoutBuffer,
+            stderr: stderrBuffer,
           },
         };
 
@@ -216,7 +218,6 @@ const _setup = async (mainWindow: BrowserWindow) => {
 export const _download = (
   mainWindow: BrowserWindow,
   exerciseIdentifier: string,
-  navigateToPage: boolean = true,
 ) => {
   const childProcess = _spawnChildProcess({
     args: ["download", exerciseIdentifier],
@@ -324,10 +325,15 @@ export const _download = (
     } else {
       // Failure
       const taskPayload: GitMasteryTaskData = {
+        exerciseIdentifier: exerciseIdentifier,
+
         completed: {
           status: "failure",
           message:
+            stderrBuffer ||
             "Download failed! Please ensure GitMastery is set up properly",
+          stdout: stdoutBuffer,
+          stderr: stderrBuffer,
         },
       };
       sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
@@ -361,9 +367,6 @@ export const _verify = (
 
   let stdoutBuffer = "";
   let stderrBuffer = "";
-
-  let hasSeenSuccess = false;
-  let hasSeenFailure = false;
 
   childProcess.stdout.on("data", (data) => {
     stdoutBuffer += data.toString() + "[[terminal-line]]";
@@ -449,9 +452,11 @@ export const _verify = (
       const taskPayload: GitMasteryTaskData = {
         exerciseIdentifier: exerciseIdentifier,
 
-        error: {
-          code: 500, // TODO: set this code properly
-          message: "Verify failed! Please try again (TODO)",
+        completed: {
+          status: "failure",
+          message: stderrBuffer || "Verify failed! Please try again",
+          stdout: stdoutBuffer,
+          stderr: stderrBuffer,
         },
       };
       sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
@@ -528,21 +533,25 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
   );
 
   // Command 2: `start` an exercise manually (this function helps the user CD into an exercise)
-  ipcMainOn(
+  ipcMainHandle(
     "gitmastery-start-exercise",
-    ({ exerciseIdentifier }: { exerciseIdentifier: string }) => {
-      const exerciseRoot = path.join(
-        getExerciseDirectory(),
-        exerciseIdentifier,
-      );
+    async ({ exerciseIdentifier }: { exerciseIdentifier: string }) => {
+      let exerciseRoot: string;
+      try {
+        exerciseRoot = path.join(getExerciseDirectory(), exerciseIdentifier);
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+
       const cwd = resolveExerciseCwd(exerciseRoot);
       if (!cwd) {
-        console.warn(
-          `[start-exercise] no exercise directory found for "${exerciseIdentifier}" at ${exerciseRoot}`,
-        );
-        return;
+        const error = `No exercise directory found at ${exerciseRoot}`;
+        console.warn(`[start-exercise] ${error}`);
+        return { ok: false, error };
       }
-      writeToPty(`cd "${cwd}"\r`);
+
+      runCommandInPty(`cd "${cwd}"`);
+      return { ok: true, cwd };
     },
   );
 

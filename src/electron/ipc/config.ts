@@ -55,7 +55,26 @@ export function setupConfigIpc(mainWindow: BrowserWindow) {
     return getConfig().dataDirectory || null;
   });
 
+  ipcMainHandle("check-exercise-folder", async () => {
+    const dataDirectory = getConfig().dataDirectory || null;
+    if (!dataDirectory) {
+      return { dataDirectory: null, exercisesPath: null, ready: false };
+    }
+
+    const exercisesPath = path.join(dataDirectory, "gitmastery-exercises");
+    return {
+      dataDirectory,
+      exercisesPath,
+      ready: fs.existsSync(exercisesPath),
+    };
+  });
+
   ipcMainHandle("get-downloaded-exercises", async () => {
+    // The folder is only known once the user has picked a save location.
+    if (!getConfig().dataDirectory) {
+      return {};
+    }
+
     const exerciseDirectory = getExerciseDirectory();
     if (!fs.existsSync(exerciseDirectory)) {
       return {};

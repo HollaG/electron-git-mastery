@@ -45,7 +45,7 @@ const XTermComponent = () => {
       removeDataListener();
       term.dispose();
     };
-  }, [terminalRef.current]);
+  }, []);
 
   return <div ref={terminalRef} className="w-full h-full bg-black" />;
 };

@@ -29,6 +29,7 @@ interface Window {
     checkGithubCli: () => Promise<boolean>;
     downloadGitMasteryApp: () => Promise<boolean>;
     getGitMasteryVersion: () => Promise<{ version: string; latest?: string }>;
+    checkExerciseFolder: () => Promise<ExerciseFolderStatus>;
 
     // for retrieving config settings of the backend (electron app)
     // just an array of folder names
@@ -41,7 +42,7 @@ interface Window {
 
     // TODO: decide whether this command should return when (1) task starts or (2) task completes
     startGitMasteryTask: (command: string) => Promise<boolean>;
-    startExercise: (exerciseIdentifier: string) => void;
+    startExercise: (exerciseIdentifier: string) => Promise<StartExerciseResult>;
 
     // for opening URLs in the system's default browser
     openExternal: (url: string) => void;
@@ -72,7 +73,6 @@ type IpcHandlerChannelMapping = {
   "set-data-directory": { directory: string };
 
   "gitmastery-task-data": { originalCommand: string; data: GitMasteryTaskData };
-  "gitmastery-start-exercise": { exerciseIdentifier: string };
 
   // open a URL in the system default browser
   "open-external": { url: string };
@@ -103,10 +103,30 @@ type IpcInvokeChannelMapping = {
     { version: string; latest?: string }
   >;
 
+  "check-exercise-folder": IIpcInvoke<null, ExerciseFolderStatus>;
+
   // gitmastery
   "get-downloaded-exercises": IIpcInvoke<null, ProgressData>;
   "gitmastery-setup": IIpcInvoke<null, string | null>;
   "gitmastery-start-task": IIpcInvoke<{ command: string }, boolean>;
+  "gitmastery-start-exercise": IIpcInvoke<
+    { exerciseIdentifier: string },
+    StartExerciseResult
+  >;
+};
+
+/** Where exercise files live, and whether GitMastery has created that folder. */
+type ExerciseFolderStatus = {
+  dataDirectory: string | null;
+  exercisesPath: string | null;
+  ready: boolean;
+};
+
+/** Outcome of moving the terminal into an exercise's working directory. */
+type StartExerciseResult = {
+  ok: boolean;
+  cwd?: string;
+  error?: string;
 };
 
 type GitMasteryTaskData = {

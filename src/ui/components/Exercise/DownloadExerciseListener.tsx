@@ -12,7 +12,7 @@ import {
 } from "../../contexts/WebContentsViewContext";
 import type { Exercise } from "../../../types/Exercise";
 
-const activeNotifications: Record<string, boolean> = {};
+const isDownloadCommand = (cmd: string) => cmd.startsWith("download");
 
 /**
  * Globally mounted listener for exercise download streams.
@@ -25,7 +25,9 @@ export const DownloadExerciseListener = () => {
   const { startExercise } = useActivity();
   const { navigate } = useWebContentsView();
   const { setView } = useAppView();
-  const historyLinesRef = useRef<Record<string, string[]>>({});
+  // Presence of a command means its notification is already on screen; the
+  // value is the tail of its output shown in that notification.
+  const progressRef = useRef<Map<string, string[]>>(new Map());
   const selectedExerciseRef = useRef<Exercise | null>(null);
 
   const resolveExercise = useCallback(
@@ -42,9 +44,10 @@ export const DownloadExerciseListener = () => {
 
   const onExerciseDownloadProgress = useCallback(
     (originalCommand: string, data: GitMasteryTaskData) => {
-      if (!activeNotifications[originalCommand]) {
-        activeNotifications[originalCommand] = true;
-        historyLinesRef.current[originalCommand] = [];
+      let lines = progressRef.current.get(originalCommand);
+      if (!lines) {
+        lines = [];
+        progressRef.current.set(originalCommand, lines);
         showNotification({
           id: originalCommand,
           title: "Downloading",
@@ -55,18 +58,15 @@ export const DownloadExerciseListener = () => {
         });
       }
 
-      const message = data.success!.message;
       const exerciseIdentifier = data.exerciseIdentifier;
       if (exerciseIdentifier && !selectedExerciseRef.current) {
         selectedExerciseRef.current = resolveExercise(exerciseIdentifier);
       }
 
-      const lines = historyLinesRef.current[originalCommand] || [];
-      lines.push(message);
+      lines.push(data.success!.message);
       if (lines.length > 4) {
         lines.shift();
       }
-      historyLinesRef.current[originalCommand] = lines;
 
       updateNotification({
         id: originalCommand,
@@ -102,8 +102,7 @@ export const DownloadExerciseListener = () => {
       }
 
       selectedExerciseRef.current = null;
-      delete historyLinesRef.current[originalCommand];
-      delete activeNotifications[originalCommand];
+      progressRef.current.delete(originalCommand);
     },
     [
       navigate,
@@ -121,7 +120,8 @@ export const DownloadExerciseListener = () => {
       updateNotification({
         id: originalCommand,
         title: "Download failed",
-        message: data.error!.message,
+        message:
+          data.completed?.message ?? data.error?.message ?? "Download failed",
         loading: false,
         color: "red",
         icon: <IconX size={18} />,
@@ -130,14 +130,13 @@ export const DownloadExerciseListener = () => {
       });
 
       selectedExerciseRef.current = null;
-      delete historyLinesRef.current[originalCommand];
-      delete activeNotifications[originalCommand];
+      progressRef.current.delete(originalCommand);
     },
     [],
   );
 
   useElectronStream({
-    condition: (cmd: string) => cmd.startsWith("download"),
+    condition: isDownloadCommand,
     onData: onExerciseDownloadProgress,
     onSuccessExit: onExerciseDownloadComplete,
     onFailedExit: onExerciseDownloadFailure,
