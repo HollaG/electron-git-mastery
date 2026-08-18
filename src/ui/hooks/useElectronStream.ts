@@ -1,42 +1,44 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useGitMasteryTask } from "../contexts/GitMasteryTaskContext";
 
-export const useElectronStream = ({
-  condition,
-  onData,
-  onSuccessExit,
-  onFailedExit,
-}: {
+type StreamHandler = (
+  originalCommand: string,
+  data: GitMasteryTaskData,
+) => void;
+
+/**
+ * Subscribes to the GitMastery task stream and splits it into progress,
+ * success and failure callbacks.
+ */
+export const useElectronStream = (handlers: {
   condition: (cmd: string) => boolean;
-  onData: (originalCommand: string, data: GitMasteryTaskData) => void;
-  onSuccessExit: (originalCommand: string, data: GitMasteryTaskData) => void;
-  onFailedExit: (originalCommand: string, data: GitMasteryTaskData) => void;
+  onData: StreamHandler;
+  onSuccessExit: StreamHandler;
+  onFailedExit: StreamHandler;
 }) => {
   const { addListener } = useGitMasteryTask();
 
+  // Callers routinely pass freshly created closures, so the handlers are kept in
+  // a ref to subscribe once instead of on every render.
+  const handlersRef = useRef(handlers);
   useEffect(() => {
-    const _onMessage = (originalCommand: string, data: GitMasteryTaskData) => {
-      if (!condition(originalCommand)) return;
+    handlersRef.current = handlers;
+  });
 
-      if (data.completed?.status === "success") {
-        onSuccessExit(originalCommand, data);
-        return;
-      }
-      if (data.completed?.status === "failure") {
-        onFailedExit(originalCommand, data);
-        return;
-      }
+  useEffect(() => {
+    return addListener(
+      (command) => handlersRef.current.condition(command),
+      (originalCommand, data) => {
+        const { onData, onSuccessExit, onFailedExit } = handlersRef.current;
 
-      if (data.success) {
-        // intermediate step was successfull
-        onData(originalCommand, data);
-        return;
-      }
-    };
-    const unsubscribe = addListener(condition, _onMessage);
-
-    return () => unsubscribe();
-  }, [condition, onData, onSuccessExit, onFailedExit]);
-
-  return { condition, onData, onSuccessExit, onFailedExit };
+        if (data.completed?.status === "success") {
+          onSuccessExit(originalCommand, data);
+        } else if (data.completed?.status === "failure") {
+          onFailedExit(originalCommand, data);
+        } else if (data.success) {
+          onData(originalCommand, data);
+        }
+      },
+    );
+  }, [addListener]);
 };

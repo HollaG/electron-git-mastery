@@ -4,7 +4,8 @@ import { flushSync } from "react-dom";
 type ResizeHandleProps = {
   width: number;
   min: number;
-  max: number;
+  /** Evaluated when a drag starts, so window resizes cannot leave it stale. */
+  max: () => number;
   cssVars: string[];
   invert?: boolean;
   onChange: (width: number) => void;
@@ -30,6 +31,7 @@ export const ResizeHandle = ({
         e.preventDefault();
         const startX = e.clientX;
         const startWidth = width;
+        const maxWidth = Math.max(min, max());
         let current = startWidth;
         let raf = 0;
 
@@ -42,7 +44,7 @@ export const ResizeHandle = ({
 
         const onMove = (ev: MouseEvent) => {
           const dx = invert ? startX - ev.clientX : ev.clientX - startX;
-          current = Math.min(max, Math.max(min, startWidth + dx));
+          current = Math.min(maxWidth, Math.max(min, startWidth + dx));
           if (raf) return;
           raf = requestAnimationFrame(() => {
             raf = 0;

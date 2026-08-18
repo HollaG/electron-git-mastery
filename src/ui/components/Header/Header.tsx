@@ -1,19 +1,5 @@
-import {
-  Box,
-  Button,
-  Center,
-  Divider,
-  Flex,
-  Group,
-  SegmentedControl,
-  Text,
-} from "@mantine/core";
-import {
-  IconMap,
-  IconChecklist,
-  IconPlayerStop,
-  IconCircleCheck,
-} from "@tabler/icons-react";
+import { Box, Flex, Group, SegmentedControl } from "@mantine/core";
+import { IconMap, IconChecklist } from "@tabler/icons-react";
 import { useActivity } from "../../contexts/ActivityContext";
 import { useAppView, type AppView } from "../../contexts/AppViewContext";
 import {
@@ -30,13 +16,7 @@ export const Header = ({
   lessonsPanelOpened: boolean;
   onToggleLessonsPanel: () => void;
 }) => {
-  const {
-    currentExercise,
-    getActivityText,
-    isDoingActivity,
-    endActivity,
-    verifyExercise,
-  } = useActivity();
+  const { currentExercise } = useActivity();
   const { view, setView } = useAppView();
   const { navigate, restoreLessonPage } = useWebContentsView();
 
@@ -56,7 +36,6 @@ export const Header = ({
 
   return (
     <Box
-      pos="relative"
       h="100%"
       px="md"
       style={{
@@ -104,45 +83,6 @@ export const Header = ({
         </Flex>
         <SettingsMenu />
       </Flex>
-
-      {isDoingActivity && (
-        <Center pos="absolute" inset={0} style={{ pointerEvents: "none" }}>
-          <Flex
-            px="sm"
-            bg="gm-green"
-            align="center"
-            gap="sm"
-            className="rounded-full py-1 min-w-0 max-w-[min(520px,42vw)] shadow-sm"
-            style={{ pointerEvents: "auto" }}
-          >
-            <Button
-              size="compact-sm"
-              variant="subtle"
-              c="white"
-              leftSection={<IconPlayerStop size={14} />}
-              onClick={() => endActivity()}
-            >
-              Quit
-            </Button>
-            <Divider orientation="vertical" color="rgba(255,255,255,0.35)" />
-            <Text c="white" size="sm" fw={500} truncate className="min-w-0">
-              {getActivityText()}
-            </Text>
-            <Divider orientation="vertical" color="rgba(255,255,255,0.35)" />
-            <Button
-              size="compact-sm"
-              variant="white"
-              color="gm-green"
-              leftSection={<IconCircleCheck size={14} />}
-              onClick={() => {
-                verifyExercise({});
-              }}
-            >
-              Check solution
-            </Button>
-          </Flex>
-        </Center>
-      )}
     </Box>
   );
 };

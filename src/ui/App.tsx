@@ -9,6 +9,7 @@ import { Onboarding } from "./pages/Onboarding";
 import { ExercisesPage } from "./pages/Exercises";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { DownloadExerciseListener } from "./components/Exercise/DownloadExerciseListener";
+import { ExerciseTopBar } from "./components/Exercise/ExerciseTopBar";
 import { AppViewProvider, useAppView } from "./contexts/AppViewContext";
 import { useActivity } from "./contexts/ActivityContext";
 import { useWebContentsView } from "./contexts/WebContentsViewContext";
@@ -42,14 +43,12 @@ function MainApp() {
   const [asideWidth, setAsideWidth] = useState(512);
   const [lessonsPanelOpened, setLessonsPanelOpened] = useState(false);
   const showExercisesCatalog = view === "exercises" && !currentExercise;
-  const showEmbedded =
-    view === "tours" || (view === "exercises" && Boolean(currentExercise));
+  const showEmbeddedExercise = view === "exercises" && Boolean(currentExercise);
+  const showEmbedded = view === "tours" || showEmbeddedExercise;
 
   useEffect(() => {
     setEmbeddedVisible(showEmbedded);
   }, [setEmbeddedVisible, showEmbedded]);
-
-  const asideMax = window.innerWidth - MIN_MAIN;
 
   return (
     <>
@@ -84,6 +83,7 @@ function MainApp() {
         </AppShell.Navbar>
         <AppShell.Main className="flex h-dvh flex-col overflow-hidden">
           <Box pos="relative" className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {showEmbeddedExercise && <ExerciseTopBar />}
             <WebsiteWrapper />
             {showExercisesCatalog && (
               <Box
@@ -103,7 +103,7 @@ function MainApp() {
             <ResizeHandle
               width={asideWidth}
               min={MIN_ASIDE}
-              max={asideMax}
+              max={() => window.innerWidth - MIN_MAIN}
               cssVars={["--app-shell-aside-width", "--app-shell-aside-offset"]}
               invert
               onChange={setAsideWidth}

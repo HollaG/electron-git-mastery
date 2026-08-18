@@ -3,25 +3,27 @@ import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 export function useCustomQuery<TData = unknown, TError = Error>(
   params: UseCustomQueryParams<TData, TError>,
 ) {
-  if ("queryUrl" in params) {
-    const { queryKey, queryUrl, options } = params;
-    return useQuery<TData, TError>({
-      queryKey,
-      queryFn: () => fetch(queryUrl).then((r) => r.json()),
-      staleTime: 1000 * 60 * 60, // 1 hour
-      retry: 2,
-      ...options,
-    });
-  } else {
-    const { queryKey, queryFn, options } = params;
-    return useQuery<TData, TError>({
-      queryKey,
-      queryFn,
-      staleTime: 1000 * 60 * 60, // 1 hour
-      retry: 2,
-      ...options,
-    });
+  const { queryKey, options } = params;
+  const queryFn =
+    "queryUrl" in params
+      ? () => fetchJson<TData>(params.queryUrl)
+      : params.queryFn;
+
+  return useQuery<TData, TError>({
+    queryKey,
+    queryFn,
+    staleTime: 1000 * 60 * 60, // 1 hour
+    retry: 2,
+    ...options,
+  });
+}
+
+async function fetchJson<TData>(url: string): Promise<TData> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Request to ${url} failed with ${response.status}`);
   }
+  return (await response.json()) as TData;
 }
 
 type UseCustomQueryParams<TData = unknown, TError = Error> =

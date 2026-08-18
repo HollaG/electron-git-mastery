@@ -83,7 +83,7 @@ export const WebsiteWrapper = () => {
       resizeObserver.disconnect();
       dprCleanup?.();
     };
-  }, [webViewRef]);
+  }, []);
 
   return (
     <Flex direction={"column"} className="h-full w-full min-h-0 grow">
