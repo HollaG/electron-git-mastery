@@ -1,6 +1,7 @@
-import { ActionIcon, Box, Tooltip } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { useActivity } from "../../contexts/ActivityContext";
+import { IconButton } from "../ui/IconButton";
+import { Tooltip } from "../ui/Tooltip";
 
 /**
  * Row reserved above the embedded exercise page. It cannot be an overlay: the
@@ -11,22 +12,17 @@ export const ExerciseTopBar = () => {
   const { endActivity } = useActivity();
 
   return (
-    <Box
-      px="sm"
-      py={6}
-      style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}
-    >
-      <Tooltip label="Back to exercises" position="right" withArrow>
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          size="lg"
+    <div className="shrink-0 border-b border-neutral-200 px-3 py-1.5">
+      {/* Anchored to the right of the button for the same reason: a tooltip
+          below it would land on the native view and never be seen. */}
+      <Tooltip label="Back to exercises" position="right">
+        <IconButton
           aria-label="Back to exercises"
           onClick={() => endActivity()}
         >
           <IconArrowLeft size={20} />
-        </ActionIcon>
+        </IconButton>
       </Tooltip>
-    </Box>
+    </div>
   );
 };

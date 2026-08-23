@@ -1,21 +1,14 @@
 import { useState } from "react";
-import {
-  Box,
-  Button,
-  Flex,
-  Group,
-  Image,
-  Paper,
-  Stack,
-  Stepper,
-  Text,
-  Title,
-  Tooltip,
-} from "@mantine/core";
 import logo from "../assets/logo.png";
 import { useEmbeddedSuppressed } from "../hooks/useEmbeddedSuppressed";
 import { FileLocationPanel } from "../components/Setup/FileLocationPanel";
 import { SetupChecklist } from "../components/Setup/SetupChecklist";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { Stepper } from "../components/ui/Stepper";
+import { Tooltip } from "../components/ui/Tooltip";
+
+const STEPS = ["File location", "Setup"];
 
 /**
  * First run only. Walks through the two things that need attention before the
@@ -38,75 +31,66 @@ export const Onboarding = ({
   const [toolsReady, setToolsReady] = useState(false);
 
   return (
-    <Flex bg="gm-bone" className="h-screen w-full items-center justify-center">
-      <Paper
-        withBorder
-        radius="md"
-        p="xl"
-        bg="white"
-        className="w-[680px] max-w-[92vw]"
-      >
-        <Stack gap="lg">
-          <Group gap="md" align="center">
-            <Box w={48} h={48}>
-              <Image src={logo} alt="GitMastery logo" w={48} h={48} />
-            </Box>
-            <Title order={3}>Welcome to GitMastery</Title>
-          </Group>
+    <div className="flex h-screen w-full items-center justify-center bg-gm-bone">
+      <Card className="w-[680px] max-w-[92vw] p-8">
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center gap-4">
+            <img
+              src={logo}
+              alt="GitMastery logo"
+              className="h-12 w-12 shrink-0"
+            />
+            <h1 className="font-heading text-[1.2rem]/[1.4] font-semibold text-[#333]">
+              Welcome to GitMastery
+            </h1>
+          </div>
 
           {/* Two steps stretched across the card look lopsided, so the
               separator is kept short and the pair centred. */}
-          <Box w="50%" mx="auto">
-            <Stepper
-              active={step}
-              onStepClick={setStep}
-              allowNextStepsSelect={false}
-              color="gm-green"
-              size="sm"
-              iconSize={30}
-            >
-              <Stepper.Step label="File location" />
-              <Stepper.Step label="Setup" />
-            </Stepper>
-          </Box>
+          <Stepper
+            className="mx-auto w-1/2"
+            active={step}
+            steps={STEPS}
+            onStepClick={setStep}
+          />
 
           {step === 0 ? (
             <FileLocationPanel onChange={setFolder} />
           ) : (
-            <Stack gap="sm">
+            <div className="flex flex-col gap-3">
               <SetupChecklist onReadyChange={setToolsReady} />
-              <Text size="sm" c="dimmed">
+              <p className="text-[13px] text-neutral-500">
                 You can leave anything unfinished and come back to it from
                 Settings at any time.
-              </Text>
-            </Stack>
+              </p>
+            </div>
           )}
 
-          <Group justify="flex-end">
+          <div className="flex justify-end">
             {step === 0 ? (
-              <Button
-                color="gm-green"
-                disabled={!folder}
-                onClick={() => setStep(1)}
+              <Tooltip
+                label="Choose where exercise files should be saved to continue."
+                disabled={Boolean(folder)}
+                width={280}
               >
-                Continue
-              </Button>
+                <Button disabled={!folder} onClick={() => setStep(1)}>
+                  Continue
+                </Button>
+              </Tooltip>
             ) : (
               <Tooltip
                 label="Some required tools were not detected yet. You can come back anytime via Settings to finish installing them."
                 disabled={toolsReady}
-                withArrow
-                multiline
-                w={280}
+                width={280}
               >
-                <Button color="gm-green" onClick={onCompleteOnboarding}>
+                <Button onClick={onCompleteOnboarding}>
                   Start using GitMastery
                 </Button>
               </Tooltip>
             )}
-          </Group>
-        </Stack>
-      </Paper>
-    </Flex>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 };

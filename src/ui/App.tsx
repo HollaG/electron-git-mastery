@@ -1,22 +1,22 @@
-import { AppShell, Box } from "@mantine/core";
 import TerminalComponent from "./components/Terminal/Terminal";
 import { WebsiteWrapper } from "./components/Website/WebsiteWrapper";
 import { Header } from "./components/Header/Header";
 import { ToursPanel } from "./components/Header/ToursMenu";
 import { useEffect, useState } from "react";
-import { useLocalStorage } from "@mantine/hooks";
 import { Onboarding } from "./pages/Onboarding";
 import { ExercisesPage } from "./pages/Exercises";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { DownloadExerciseListener } from "./components/Exercise/DownloadExerciseListener";
 import { ExerciseTopBar } from "./components/Exercise/ExerciseTopBar";
-import { AppViewProvider, useAppView } from "./contexts/AppViewContext";
+import { AppViewProvider } from "./providers/AppViewProvider";
+import { useAppView } from "./contexts/AppViewContext";
 import { useActivity } from "./contexts/ActivityContext";
 import { useWebContentsView } from "./contexts/WebContentsViewContext";
+import { useLocalStorage } from "./hooks/useLocalStorage";
 
 const MIN_MAIN = 320;
 const MIN_ASIDE = 280;
-const HEADER_HEIGHT = 64;
+const ASIDE_WIDTH_VAR = "--gm-aside-width";
 
 function App() {
   const [onboardingCompleted, setOnboardingCompleted] = useLocalStorage({
@@ -45,72 +45,62 @@ function MainApp() {
   const showExercisesCatalog = view === "exercises" && !currentExercise;
   const showEmbeddedExercise = view === "exercises" && Boolean(currentExercise);
   const showEmbedded = view === "tours" || showEmbeddedExercise;
+  const showToursPanel = lessonsPanelOpened && view === "tours";
 
   useEffect(() => {
     setEmbeddedVisible(showEmbedded);
   }, [setEmbeddedVisible, showEmbedded]);
 
+  // The aside reads its width from a custom property so a drag can resize the
+  // pane — and with it the native view's bounds — without a React render.
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      ASIDE_WIDTH_VAR,
+      `${asideWidth}px`,
+    );
+  }, [asideWidth]);
+
   return (
     <>
       <DownloadExerciseListener />
-      <AppShell
-        padding={0}
-        transitionDuration={0}
-        header={{ height: HEADER_HEIGHT }}
-        navbar={{
-          width: 300,
-          breakpoint: "xs",
-          collapsed: {
-            desktop: !lessonsPanelOpened || view !== "tours",
-            mobile: !lessonsPanelOpened || view !== "tours",
-          },
-        }}
-        aside={{ width: asideWidth, breakpoint: "xs" }}
-      >
-        <AppShell.Header
-          bg="white"
-          style={{ overflow: "visible", zIndex: 200 }}
-        >
+      <div className="flex h-dvh flex-col overflow-hidden">
+        <header className="relative z-[200] h-16 shrink-0 overflow-visible border-b border-neutral-200 bg-white px-4">
           <Header
             lessonsPanelOpened={lessonsPanelOpened}
-            onToggleLessonsPanel={() =>
-              setLessonsPanelOpened((opened) => !opened)
-            }
+            onOpenLessonsPanel={() => setLessonsPanelOpened(true)}
           />
-        </AppShell.Header>
-        <AppShell.Navbar>
-          <ToursPanel onMinimize={() => setLessonsPanelOpened(false)} />
-        </AppShell.Navbar>
-        <AppShell.Main className="flex h-dvh flex-col overflow-hidden">
-          <Box pos="relative" className="flex min-h-0 min-w-0 flex-1 flex-col">
+        </header>
+
+        <div className="flex min-h-0 min-w-0 flex-1">
+          {showToursPanel && (
+            <nav className="w-[300px] min-w-0 shrink-0 border-r border-neutral-200 bg-white">
+              <ToursPanel onClose={() => setLessonsPanelOpened(false)} />
+            </nav>
+          )}
+
+          <main className="relative flex min-h-0 min-w-0 flex-1 flex-col">
             {showEmbeddedExercise && <ExerciseTopBar />}
             <WebsiteWrapper />
             {showExercisesCatalog && (
-              <Box
-                pos="absolute"
-                inset={0}
-                bg="white"
-                className="min-w-0 overflow-hidden"
-              >
+              <div className="absolute inset-0 min-w-0 overflow-hidden bg-white">
                 <ExercisesPage />
-              </Box>
+              </div>
             )}
-          </Box>
-        </AppShell.Main>
-        <AppShell.Aside>
-          <Box pos="relative" h="100%">
+          </main>
+
+          <aside className="relative min-w-0 shrink-0 border-l border-neutral-200 w-[var(--gm-aside-width)]">
             <TerminalComponent />
             <ResizeHandle
               width={asideWidth}
               min={MIN_ASIDE}
               max={() => window.innerWidth - MIN_MAIN}
-              cssVars={["--app-shell-aside-width", "--app-shell-aside-offset"]}
+              cssVars={[ASIDE_WIDTH_VAR]}
               invert
               onChange={setAsideWidth}
             />
-          </Box>
-        </AppShell.Aside>
-      </AppShell>
+          </aside>
+        </div>
+      </div>
     </>
   );
 }

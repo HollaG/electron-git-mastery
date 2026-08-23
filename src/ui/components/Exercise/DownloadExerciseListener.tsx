@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { IconCheck, IconX } from "@tabler/icons-react";
-import { showNotification, updateNotification } from "@mantine/notifications";
 import { useElectronStream } from "../../hooks/useElectronStream";
+import { useToast } from "../../contexts/ToastContext";
 import { useLocalExercises } from "../../hooks/query/useLocalExercises";
 import { useExercises } from "../../hooks/query/useExercises";
 import { useActivity } from "../../contexts/ActivityContext";
@@ -25,6 +25,7 @@ export const DownloadExerciseListener = () => {
   const { startExercise } = useActivity();
   const { navigate } = useWebContentsView();
   const { setView } = useAppView();
+  const { showToast, updateToast } = useToast();
   // Presence of a command means its notification is already on screen; the
   // value is the tail of its output shown in that notification.
   const progressRef = useRef<Map<string, string[]>>(new Map());
@@ -48,7 +49,7 @@ export const DownloadExerciseListener = () => {
       if (!lines) {
         lines = [];
         progressRef.current.set(originalCommand, lines);
-        showNotification({
+        showToast({
           id: originalCommand,
           title: "Downloading",
           message: "Downloading...",
@@ -68,12 +69,9 @@ export const DownloadExerciseListener = () => {
         lines.shift();
       }
 
-      updateNotification({
-        id: originalCommand,
-        message: lines.join("\n"),
-      });
+      updateToast(originalCommand, { message: lines.join("\n") });
     },
-    [resolveExercise],
+    [resolveExercise, showToast, updateToast],
   );
 
   const onExerciseDownloadComplete = useCallback(
@@ -81,13 +79,12 @@ export const DownloadExerciseListener = () => {
       console.log("[info] download completed, refetching downloaded exercises");
       rescanDownloadedExercises();
 
-      updateNotification({
-        id: originalCommand,
+      updateToast(originalCommand, {
         title: "Download complete",
         message: "",
         loading: false,
-        color: "green",
-        icon: <IconCheck size={18} />,
+        tone: "success",
+        icon: <IconCheck size={18} className="text-brand-600" />,
         autoClose: 5000,
         withCloseButton: true,
       });
@@ -114,6 +111,7 @@ export const DownloadExerciseListener = () => {
       rescanDownloadedExercises,
       setView,
       startExercise,
+      updateToast,
     ],
   );
 
@@ -121,14 +119,13 @@ export const DownloadExerciseListener = () => {
     (originalCommand: string, data: GitMasteryTaskData) => {
       console.log("[info] download completed but with errors.");
 
-      updateNotification({
-        id: originalCommand,
+      updateToast(originalCommand, {
         title: "Download failed",
         message:
           data.completed?.message ?? data.error?.message ?? "Download failed",
         loading: false,
-        color: "red",
-        icon: <IconX size={18} />,
+        tone: "danger",
+        icon: <IconX size={18} className="text-[#b42318]" />,
         autoClose: 5000,
         withCloseButton: true,
       });
@@ -142,7 +139,7 @@ export const DownloadExerciseListener = () => {
       }
       progressRef.current.delete(originalCommand);
     },
-    [resolveExercise],
+    [resolveExercise, updateToast],
   );
 
   useElectronStream({
