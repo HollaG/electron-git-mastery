@@ -13,7 +13,9 @@ import {
 import { useCustomQuery } from "../../hooks/query/useCustomQuery";
 import { useExercises } from "../../hooks/query/useExercises";
 import { IconButton } from "../ui/IconButton";
+import { StatusPill } from "../ui/StatusPill";
 import { formatExerciseTitle, getExerciseLessonName } from "../../utils/format";
+import { useLocalExercises } from "../../hooks/query/useLocalExercises";
 
 export const ToursMenu = ({
   opened,
@@ -38,6 +40,7 @@ export const ToursPanel = () => {
     queryUrl: "https://git-mastery.org/lessons/lessons.json",
   });
   const { query: exercisesQuery } = useExercises();
+  const { downloadedExerciseData } = useLocalExercises();
   const { navigate, currentUrl } = useWebContentsView();
 
   const tours = tourList
@@ -73,6 +76,7 @@ export const ToursPanel = () => {
               tour={tour}
               currentUrl={currentUrl}
               exercisesByLesson={exercisesByLesson}
+              downloadedExerciseData={downloadedExerciseData}
               onNavigate={navigate}
             />
           ))}
@@ -91,11 +95,13 @@ const TourItem = ({
   tour,
   currentUrl,
   exercisesByLesson,
+  downloadedExerciseData,
   onNavigate,
 }: {
   tour: Tour;
   currentUrl: string | null;
   exercisesByLesson: Map<string, Exercise[]>;
+  downloadedExerciseData: ProgressData | undefined;
   onNavigate: (url: string) => void;
 }) => {
   const isActive = isTourUrlActive(tour, currentUrl);
@@ -134,6 +140,7 @@ const TourItem = ({
               lesson={lesson}
               currentUrl={currentUrl}
               exercises={exercisesByLesson.get(lesson.lesson_name) ?? []}
+              downloadedExerciseData={downloadedExerciseData}
               onNavigate={onNavigate}
             />
           ))}
@@ -147,11 +154,13 @@ const LessonItem = ({
   lesson,
   currentUrl,
   exercises,
+  downloadedExerciseData,
   onNavigate,
 }: {
   lesson: Lesson;
   currentUrl: string | null;
   exercises: Exercise[];
+  downloadedExerciseData: ProgressData | undefined;
   onNavigate: (url: string) => void;
 }) => {
   const hasExercises = exercises.length > 0;
@@ -186,16 +195,25 @@ const LessonItem = ({
       {opened && (
         <div className="pl-3">
           {hasExercises ? (
-            exercises.map((exercise) => (
-              <button
-                key={exercise.identifier}
-                type="button"
-                className={listItemClasses}
-                onClick={() => onNavigate(buildExerciseUrl(exercise))}
-              >
-                Exercise: {formatExerciseTitle(exercise)}
-              </button>
-            ))
+            exercises.map((exercise) => {
+              const status =
+                downloadedExerciseData?.[exercise.identifier]?.status;
+              return (
+                <button
+                  key={exercise.identifier}
+                  type="button"
+                  className={listItemClasses}
+                  onClick={() => onNavigate(buildExerciseUrl(exercise))}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate">
+                      Exercise: {formatExerciseTitle(exercise)}
+                    </span>
+                    {status && <StatusPill status={status} />}
+                  </span>
+                </button>
+              );
+            })
           ) : (
             <span className="block px-2 py-1.5 text-[13px] text-neutral-400">
               No exercises

@@ -163,7 +163,7 @@ type GitMasteryTaskData = {
   };
 };
 
-type ProgressState = "correct" | "incorrect" | "in-progress" | "not-started";
+type ProgressState = "downloaded" | "in-progress" | "completed";
 type ExerciseProgress = {
   status: ProgressState;
 };

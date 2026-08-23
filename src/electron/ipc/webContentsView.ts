@@ -44,6 +44,24 @@ function setLoading(mainWindow: BrowserWindow, loading: boolean) {
   sendToRenderer(mainWindow, "wcv-loading", { loading });
 }
 
+function normalizePathname(pathname: string) {
+  return pathname.replace(/\/index\.html$/, "/").replace(/\/+$/, "") || "/";
+}
+
+/** Hash-only navigations on the same lesson must not loadURL (that hides the view). */
+function isSameDocumentHashChange(currentUrl: string, targetUrl: string) {
+  try {
+    const current = new URL(currentUrl);
+    const target = new URL(targetUrl);
+    return (
+      current.origin === target.origin &&
+      normalizePathname(current.pathname) === normalizePathname(target.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
   if (!wcv) {
     wcv = new WebContentsView({
@@ -183,18 +201,63 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
           });
         }
 
-        // Run immediately for any divs already present on dom-ready
-        injectButtons();
+        var observedCollapses = window.__gmObservedCollapses || (window.__gmObservedCollapses = new WeakSet());
 
-        // Watch every .card-collapse for internal DOM changes (e.g. expanding
-        // a collapsed section that injects new ex-download-info-/ex-verify-info- divs).
-        const cardCollapses = document.querySelectorAll('.card-collapse');
-        cardCollapses.forEach((cardCollapse) => {
-          const observer = new MutationObserver(() => {
-            injectButtons();
+        function observeCardCollapses() {
+          document.querySelectorAll('.card-collapse').forEach(function (cardCollapse) {
+            if (observedCollapses.has(cardCollapse)) return;
+            observedCollapses.add(cardCollapse);
+            var observer = new MutationObserver(function () {
+              injectButtons();
+            });
+            observer.observe(cardCollapse, { childList: true, subtree: true });
           });
-          observer.observe(cardCollapse, { childList: true, subtree: true });
-        });
+        }
+
+        function isCardCollapsed(card) {
+          var header = card.querySelector('.card-header');
+          if (header) {
+            var expanded = header.getAttribute('aria-expanded');
+            if (expanded === 'true') return false;
+            if (expanded === 'false') return true;
+          }
+          // Collapsed MarkBind panels keep an empty .card-collapse (comment + hidden hr).
+          return !card.querySelector('.card-body');
+        }
+
+        function expandHashTarget() {
+          var id = (location.hash || '').replace(/^#/, '');
+          if (!id) return;
+          var el = document.getElementById(id);
+          if (!el) return;
+          var card = el.closest('.card');
+          if (!card) {
+            el.scrollIntoView({ block: 'start' });
+            return;
+          }
+          var header = card.querySelector('.card-header') || card;
+          if (isCardCollapsed(card)) {
+            header.click();
+            setTimeout(function () {
+              observeCardCollapses();
+              injectButtons();
+              el.scrollIntoView({ block: 'start' });
+            }, 50);
+          }
+          el.scrollIntoView({ block: 'start' });
+          observeCardCollapses();
+          injectButtons();
+        }
+
+        injectButtons();
+        observeCardCollapses();
+        expandHashTarget();
+
+        if (!window.__gmExercisePageHooks) {
+          window.__gmExercisePageHooks = true;
+          window.addEventListener('hashchange', expandHashTarget);
+          window.addEventListener('load', expandHashTarget);
+        }
       })()
     `);
   };
@@ -266,8 +329,17 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
 
   ipcMainOn("wcv-navigate", ({ url }: { url: string }) => {
     console.log("[info] wcv-navigate event received");
+    const view = getOrCreateWcv(mainWindow);
+    const currentUrl = view.webContents.getURL();
+    if (currentUrl && isSameDocumentHashChange(currentUrl, url)) {
+      const hash = new URL(url).hash;
+      void view.webContents.executeJavaScript(
+        `location.hash = ${JSON.stringify(hash)};`,
+      );
+      return;
+    }
     setLoading(mainWindow, true);
-    getOrCreateWcv(mainWindow).webContents.loadURL(url);
+    view.webContents.loadURL(url);
   });
 
   // Temporarily hide the wcv, whenever we need to display a full screen modal.

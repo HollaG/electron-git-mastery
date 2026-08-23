@@ -39,7 +39,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   const showOnboardingRef = useRef<HTMLInputElement>(null);
 
-  const { rescanDownloadedExercises } = useLocalExercises();
+  const { downloadedExerciseData, patchExerciseStatus } = useLocalExercises();
 
   /** Verify notifications currently on screen, keyed by notification id. */
   const openVerifyNotifications = useRef<Set<string>>(new Set());
@@ -178,7 +178,15 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    rescanDownloadedExercises();
+    const exerciseIdentifier = data.exerciseIdentifier;
+    if (exerciseIdentifier && correct) {
+      patchExerciseStatus(exerciseIdentifier, "completed");
+    } else if (exerciseIdentifier && incorrect) {
+      const current = downloadedExerciseData?.[exerciseIdentifier]?.status;
+      if (current === "downloaded" || current === undefined) {
+        patchExerciseStatus(exerciseIdentifier, "in-progress");
+      }
+    }
   };
 
   const _onExerciseVerifiedFailure = (

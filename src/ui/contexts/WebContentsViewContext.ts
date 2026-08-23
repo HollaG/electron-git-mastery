@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react";
 import type { Exercise } from "../../types/Exercise";
 import type { Lesson, Tour } from "../../types/Tour";
+import { getExerciseLessonName } from "../utils/format";
 
 export const SITE_ORIGIN = "https://git-mastery.org";
 export const LESSONS_HOME_URL = `${SITE_ORIGIN}/lessons/`;
@@ -44,8 +45,7 @@ export function buildTourHomeUrlFromName(tourName: string) {
 
 export function isLessonUrlActive(lesson: Lesson, currentUrl: string | null) {
   if (!currentUrl) return false;
-  // buildLessonUrl's trailing "/" makes this a safe prefix boundary, and also
-  // matches that lesson's exercise sub-pages (e.g. .../lessons/init/exercise-x).
+  // Trailing "/" on buildLessonUrl is a safe prefix boundary (including hashes).
   return currentUrl.startsWith(buildLessonUrl(lesson));
 }
 
@@ -62,15 +62,11 @@ export function isTourUrlActive(tour: Tour, currentUrl: string | null) {
   );
 }
 
-function lessonNameForExercise(exercise: Exercise) {
-  return exercise.lesson?.lesson_name ?? exercise.detour?.lesson?.lesson_name;
-}
-
 export function buildExerciseUrl(exercise: Exercise) {
-  const lessonName = lessonNameForExercise(exercise);
+  const lessonName = getExerciseLessonName(exercise);
   if (!lessonName) {
     return SITE_ORIGIN;
   }
 
-  return `${SITE_ORIGIN}/lessons/${lessonName}/exercise-${exercise.identifier}`;
+  return `${SITE_ORIGIN}/lessons/${lessonName}/#exercise-${exercise.identifier}`;
 }
