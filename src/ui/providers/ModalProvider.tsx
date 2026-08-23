@@ -4,7 +4,7 @@ import {
   ModalContext,
   type ModalEntry,
   type ModalOptions,
-} from "./ModalContext";
+} from "../contexts/ModalContext";
 
 let nextModalId = 0;
 

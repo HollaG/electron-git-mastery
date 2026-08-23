@@ -8,7 +8,7 @@ import { ExercisesPage } from "./pages/Exercises";
 import { ResizeHandle } from "./components/ResizeHandle";
 import { DownloadExerciseListener } from "./components/Exercise/DownloadExerciseListener";
 import { ExerciseTopBar } from "./components/Exercise/ExerciseTopBar";
-import { AppViewProvider } from "./contexts/AppViewProvider";
+import { AppViewProvider } from "./providers/AppViewProvider";
 import { useAppView } from "./contexts/AppViewContext";
 import { useActivity } from "./contexts/ActivityContext";
 import { useWebContentsView } from "./contexts/WebContentsViewContext";

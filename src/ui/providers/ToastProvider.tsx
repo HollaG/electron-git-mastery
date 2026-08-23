@@ -15,7 +15,7 @@ import {
   type Toast,
   type ToastOptions,
   type ToastTone,
-} from "./ToastContext";
+} from "../contexts/ToastContext";
 
 const ACCENTS: Record<ToastTone, string> = {
   neutral: "border-l-neutral-300",

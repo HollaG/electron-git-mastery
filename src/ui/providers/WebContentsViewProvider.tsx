@@ -8,7 +8,7 @@ import {
 import {
   LESSONS_HOME_URL,
   WebContentsViewContext,
-} from "./WebContentsViewContext";
+} from "../contexts/WebContentsViewContext";
 
 const isExerciseUrl = (url: string) => /\/exercise-/.test(url);
 

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { AppViewContext, type AppView } from "./AppViewContext";
+import { AppViewContext, type AppView } from "../contexts/AppViewContext";
 
 export function AppViewProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<AppView>("tours");

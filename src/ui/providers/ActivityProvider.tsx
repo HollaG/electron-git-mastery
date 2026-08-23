@@ -17,9 +17,9 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { useElectronStream } from "../hooks/useElectronStream";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { useModal } from "./ModalContext";
-import { useToast, type ToastOptions } from "./ToastContext";
-import { ActivityContext } from "./ActivityContext";
+import { useModal } from "../contexts/ModalContext";
+import { useToast, type ToastOptions } from "../contexts/ToastContext";
+import { ActivityContext } from "../contexts/ActivityContext";
 import { Button } from "../components/ui/Button";
 import { Checkbox } from "../components/ui/Checkbox";
 

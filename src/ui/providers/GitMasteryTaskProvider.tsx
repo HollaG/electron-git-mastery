@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import {
   GitMasteryTaskContext,
   type GitMasteryTaskListener,
-} from "./GitMasteryTaskContext";
+} from "../contexts/GitMasteryTaskContext";
 
 /**
  * Mount this provider once near the root of the tree.
