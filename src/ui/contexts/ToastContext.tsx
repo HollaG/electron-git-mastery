@@ -1,0 +1,219 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { IconX } from "@tabler/icons-react";
+import { IconButton } from "../components/ui/IconButton";
+import { Spinner } from "../components/ui/Spinner";
+import { cx } from "../utils/cx";
+
+export type ToastTone = "neutral" | "success" | "danger" | "warning" | "info";
+
+export type ToastOptions = {
+  /** Stable id so a long-running task can update its own toast in place. */
+  id?: string;
+  title?: string;
+  message?: string;
+  tone?: ToastTone;
+  loading?: boolean;
+  icon?: ReactNode;
+  /** Milliseconds, or `false` to keep the toast until it is updated or hidden. */
+  autoClose?: number | false;
+  withCloseButton?: boolean;
+};
+
+type Toast = Omit<ToastOptions, "id"> & { id: string };
+
+type ToastState = {
+  showToast: (options: ToastOptions) => string;
+  /** No-op when `id` is unknown — callers rely on this to tell create from update. */
+  updateToast: (id: string, patch: Omit<ToastOptions, "id">) => void;
+  hideToast: (id: string) => void;
+};
+
+const ToastContext = createContext<ToastState | null>(null);
+
+const ACCENTS: Record<ToastTone, string> = {
+  neutral: "border-l-neutral-300",
+  success: "border-l-brand-600",
+  danger: "border-l-[#b42318]",
+  warning: "border-l-[#b54708]",
+  info: "border-l-[#0369a1]",
+};
+
+const DEFAULT_AUTO_CLOSE = 4000;
+const DANGER_AUTO_CLOSE = 8000;
+
+const resolveAutoClose = (toast: Toast) => {
+  if (toast.autoClose !== undefined) return toast.autoClose;
+  if (toast.loading) return false;
+  return toast.tone === "danger" ? DANGER_AUTO_CLOSE : DEFAULT_AUTO_CLOSE;
+};
+
+let nextToastId = 0;
+
+export function ToastProvider({ children }: { children: ReactNode }) {
+  // The list lives in a ref rather than in state because callers routinely show
+  // a toast and update it again within the same tick (the download stream does
+  // exactly that), which a state read would not yet see.
+  const store = useRef<Toast[]>([]);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const publish = useCallback(() => setToasts([...store.current]), []);
+
+  const clearTimer = useCallback((id: string) => {
+    const timer = timers.current.get(id);
+    if (timer) clearTimeout(timer);
+    timers.current.delete(id);
+  }, []);
+
+  const hideToast = useCallback(
+    (id: string) => {
+      clearTimer(id);
+      store.current = store.current.filter((toast) => toast.id !== id);
+      publish();
+    },
+    [clearTimer, publish],
+  );
+
+  /** Restarts the dismissal countdown — an update refreshes the toast's life. */
+  const scheduleDismiss = useCallback(
+    (toast: Toast) => {
+      clearTimer(toast.id);
+      const autoClose = resolveAutoClose(toast);
+      if (autoClose === false) return;
+      timers.current.set(
+        toast.id,
+        setTimeout(() => hideToast(toast.id), autoClose),
+      );
+    },
+    [clearTimer, hideToast],
+  );
+
+  const showToast = useCallback(
+    ({ id, ...rest }: ToastOptions) => {
+      const toastId = id ?? `toast-${(nextToastId += 1)}`;
+      const toast: Toast = { id: toastId, ...rest };
+      const index = store.current.findIndex((item) => item.id === toastId);
+      if (index === -1) {
+        store.current = [...store.current, toast];
+      } else {
+        store.current = store.current.map((item) =>
+          item.id === toastId ? toast : item,
+        );
+      }
+      scheduleDismiss(toast);
+      publish();
+      return toastId;
+    },
+    [publish, scheduleDismiss],
+  );
+
+  const updateToast = useCallback(
+    (id: string, patch: Omit<ToastOptions, "id">) => {
+      const current = store.current.find((item) => item.id === id);
+      if (!current) return;
+      const merged: Toast = { ...current, ...patch };
+      store.current = store.current.map((item) =>
+        item.id === id ? merged : item,
+      );
+      scheduleDismiss(merged);
+      publish();
+    },
+    [publish, scheduleDismiss],
+  );
+
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      pending.forEach(clearTimeout);
+      pending.clear();
+    };
+  }, []);
+
+  const value = useMemo(
+    () => ({ showToast, updateToast, hideToast }),
+    [showToast, updateToast, hideToast],
+  );
+
+  return (
+    <ToastContext.Provider value={value}>
+      {children}
+      <ToastViewport toasts={toasts} onDismiss={hideToast} />
+    </ToastContext.Provider>
+  );
+}
+
+/**
+ * Top-right stack. It deliberately sits below the header and no wider than the
+ * terminal aside: anything spilling into the main pane would be painted over by
+ * the native web view.
+ */
+const ToastViewport = ({
+  toasts,
+  onDismiss,
+}: {
+  toasts: Toast[];
+  onDismiss: (id: string) => void;
+}) => {
+  if (toasts.length === 0) return null;
+
+  return (
+    <div className="pointer-events-none fixed top-[76px] right-4 z-[350] flex w-[min(320px,var(--gm-aside-width))] flex-col gap-2">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          role="status"
+          className={cx(
+            "pointer-events-auto flex items-start gap-2 rounded-xl border border-neutral-200 border-l-4 bg-white p-3 shadow-card",
+            ACCENTS[toast.tone ?? "neutral"],
+          )}
+        >
+          {toast.loading ? (
+            <Spinner size={16} className="mt-0.5" />
+          ) : (
+            toast.icon && (
+              <span className="mt-0.5 flex shrink-0">{toast.icon}</span>
+            )
+          )}
+          <div className="min-w-0 flex-1">
+            {toast.title && (
+              <p className="text-[13px] font-medium text-[#333]">
+                {toast.title}
+              </p>
+            )}
+            {toast.message && (
+              <p className="text-[13px] break-words whitespace-pre-line text-neutral-500">
+                {toast.message}
+              </p>
+            )}
+          </div>
+          {(toast.withCloseButton ?? true) && (
+            <IconButton
+              aria-label="Dismiss"
+              size="sm"
+              onClick={() => onDismiss(toast.id)}
+            >
+              <IconX size={14} />
+            </IconButton>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export function useToast() {
+  const context = useContext(ToastContext);
+  if (!context) {
+    throw new Error("useToast must be used within a ToastProvider");
+  }
+  return context;
+}

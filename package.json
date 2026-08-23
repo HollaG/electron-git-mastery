@@ -18,10 +18,6 @@
     "postinstall": "electron-rebuild -f -w node-pty"
   },
   "dependencies": {
-    "@mantine/core": "^8.3.15",
-    "@mantine/hooks": "^8.3.15",
-    "@mantine/modals": "^8.3.15",
-    "@mantine/notifications": "^8.3.15",
     "@tabler/icons-react": "^3.38.0",
     "@tanstack/react-query": "^5.90.21",
     "@xterm/addon-fit": "^0.11.0",
@@ -47,8 +43,6 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "postcss": "^8.5.6",
-    "postcss-preset-mantine": "^1.18.0",
-    "postcss-simple-vars": "^7.0.1",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.0",
     "typescript": "~5.9.3",

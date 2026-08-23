@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActionIcon,
-  Divider,
-  Group,
-  Loader,
-  Stack,
-  Text,
-  Tooltip,
-} from "@mantine/core";
-import {
   IconCircleCheck,
   IconCircleX,
   IconDownload,
@@ -16,6 +7,9 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import { useElectronStream } from "../../hooks/useElectronStream";
+import { IconButton } from "../ui/IconButton";
+import { Spinner } from "../ui/Spinner";
+import { Tooltip } from "../ui/Tooltip";
 
 type CheckResult = { ok: boolean; detail: string };
 
@@ -206,94 +200,100 @@ export const SetupChecklist = ({
   };
 
   return (
-    <Stack gap="xs">
-      <Text>
+    <div className="flex flex-col gap-2 text-sm text-[#333]">
+      <p>
         GitMastery runs real Git commands on your machine, so it needs these
         tools installed. An item marked with a cross was not detected on your
         machine — use its download button, then check that item again.
-      </Text>
+      </p>
 
-      <Stack gap={0} mt="xs">
+      <div className="mt-2 flex flex-col">
         {items.map((item, index) => {
           const state = rows[item.key];
           const status = state?.status ?? "checking";
 
           return (
-            <div key={item.key}>
-              {index > 0 && <Divider />}
-              <Group
-                justify="space-between"
-                wrap="nowrap"
-                align="center"
-                py="sm"
-              >
-                <Group gap="sm" wrap="nowrap" align="center" miw={0}>
-                  <StatusIcon status={status} />
-                  <Stack gap={0} miw={0}>
-                    <Text fw={500}>{item.label}</Text>
-                    <Text
-                      size="sm"
-                      c="dimmed"
-                      style={{ wordBreak: "break-all" }}
-                    >
-                      {state?.detail ?? item.description}
-                    </Text>
-                  </Stack>
-                </Group>
+            <div
+              key={item.key}
+              className={
+                index > 0
+                  ? "flex items-center justify-between gap-3 border-t border-neutral-200 py-3"
+                  : "flex items-center justify-between gap-3 py-3"
+              }
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <StatusIcon status={status} />
+                <div className="flex min-w-0 flex-col">
+                  <span className="text-sm font-medium">{item.label}</span>
+                  <span className="text-[13px] break-all text-neutral-500">
+                    {state?.detail ?? item.description}
+                  </span>
+                </div>
+              </div>
 
-                <Group gap={4} wrap="nowrap">
-                  {item.install && status !== "ok" && (
-                    <Tooltip label={item.install.label} withArrow>
-                      <ActionIcon
-                        variant="light"
-                        color="gm-green"
-                        aria-label={item.install.label}
-                        loading={state?.busy}
-                        disabled={status === "checking"}
-                        onClick={() => void runInstall(item)}
-                      >
-                        <IconDownload size={16} />
-                      </ActionIcon>
-                    </Tooltip>
-                  )}
-                  {item.link && status !== "ok" && (
-                    <Tooltip label={item.link.label} withArrow>
-                      <ActionIcon
-                        variant="subtle"
-                        color="gray"
-                        aria-label={item.link.label}
-                        disabled={status === "checking"}
-                        onClick={() =>
-                          window.electron.openExternal(item.link!.url)
-                        }
-                      >
-                        <IconExternalLink size={16} />
-                      </ActionIcon>
-                    </Tooltip>
-                  )}
-                  <Tooltip label="Check again" withArrow>
-                    <ActionIcon
-                      variant="subtle"
-                      color="gray"
-                      aria-label={`Check ${item.label} again`}
-                      disabled={status === "checking" || state?.busy}
-                      onClick={() => void runCheck(item)}
+              <div className="flex shrink-0 items-center gap-1">
+                {item.install && status !== "ok" && (
+                  <Tooltip label={item.install.label}>
+                    <IconButton
+                      variant="soft"
+                      size="sm"
+                      aria-label={item.install.label}
+                      loading={state?.busy}
+                      disabled={status === "checking"}
+                      onClick={() => void runInstall(item)}
                     >
-                      <IconRefresh size={16} />
-                    </ActionIcon>
+                      <IconDownload size={16} />
+                    </IconButton>
                   </Tooltip>
-                </Group>
-              </Group>
+                )}
+                {item.link && status !== "ok" && (
+                  <Tooltip label={item.link.label}>
+                    <IconButton
+                      size="sm"
+                      aria-label={item.link.label}
+                      disabled={status === "checking"}
+                      onClick={() =>
+                        window.electron.openExternal(item.link!.url)
+                      }
+                    >
+                      <IconExternalLink size={16} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                <Tooltip label="Check again">
+                  <IconButton
+                    size="sm"
+                    aria-label={`Check ${item.label} again`}
+                    disabled={status === "checking" || state?.busy}
+                    onClick={() => void runCheck(item)}
+                  >
+                    <IconRefresh size={16} />
+                  </IconButton>
+                </Tooltip>
+              </div>
             </div>
           );
         })}
-      </Stack>
-    </Stack>
+      </div>
+    </div>
   );
 };
 
 const StatusIcon = ({ status }: { status: RowState["status"] }) => {
-  if (status === "checking") return <Loader size={16} color="gray" />;
-  if (status === "ok") return <IconCircleCheck size={20} color="green" />;
-  return <IconCircleX size={20} color="red" />;
+  if (status === "checking") return <Spinner size={20} />;
+  if (status === "ok")
+    return (
+      <IconCircleCheck
+        size={20}
+        className="shrink-0 text-brand-600"
+        aria-label="Installed"
+      />
+    );
+  return (
+    <IconCircleX
+      size={20}
+      className="shrink-0 text-[#b42318]"
+      aria-label="Not found"
+    />
+  );
 };

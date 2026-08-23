@@ -1,28 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  Box,
-  Button,
-  Center,
-  Flex,
-  Loader,
-  Stack,
-  Tabs,
-  Text,
-  TextInput,
-  Title,
-  UnstyledButton,
-} from "@mantine/core";
-import {
   IconDownload,
   IconFolder,
   IconPlayerPlay,
   IconSearch,
 } from "@tabler/icons-react";
-import { showNotification } from "@mantine/notifications";
 import type { Exercise } from "../../types/Exercise";
 import { useExercises } from "../hooks/query/useExercises";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
 import { useActivity } from "../contexts/ActivityContext";
+import { useToast } from "../contexts/ToastContext";
 import {
   buildExerciseUrl,
   useWebContentsView,
@@ -34,17 +21,32 @@ import {
   getExerciseTourName,
 } from "../utils/format";
 import { useElectronStream } from "../hooks/useElectronStream";
+import { Button } from "../components/ui/Button";
+import { SearchInput } from "../components/ui/SearchInput";
+import { SectionTitle } from "../components/ui/SectionTitle";
+import { StatusPill, type StatusTone } from "../components/ui/StatusPill";
+import { Tabs } from "../components/ui/Tabs";
+import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 
 type ExerciseFilter = "all" | "downloaded";
 
 const isDownloadCommand = (cmd: string) => cmd.startsWith("download");
 const noop = () => {};
 
-const STATUS_STYLES: Record<ProgressState, { label: string; color: string }> = {
-  correct: { label: "Completed", color: "var(--color-gm-green)" },
-  incorrect: { label: "Needs work", color: "#b42318" },
-  "in-progress": { label: "In progress", color: "#b54708" },
-  "not-started": { label: "Not started", color: "#667085" },
+const STATUS_STYLES: Record<
+  ProgressState,
+  { label: string; tone: StatusTone }
+> = {
+  correct: { label: "Completed", tone: "success" },
+  incorrect: { label: "Needs work", tone: "danger" },
+  "in-progress": { label: "In progress", tone: "warning" },
+  "not-started": { label: "Not started", tone: "neutral" },
+};
+
+/** A status read off disk may be something this build does not know about. */
+const statusStyleFor = (status?: ProgressState) => {
+  if (!status) return null;
+  return STATUS_STYLES[status] ?? { label: status, tone: "neutral" as const };
 };
 
 export const ExercisesPage = () => {
@@ -52,6 +54,7 @@ export const ExercisesPage = () => {
   const { downloadedExerciseData } = useLocalExercises();
   const { currentExercise, startExercise } = useActivity();
   const { navigate } = useWebContentsView();
+  const { showToast } = useToast();
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ExerciseFilter>("all");
@@ -126,12 +129,12 @@ export const ExercisesPage = () => {
   const downloadExercise = async (exercise: Exercise) => {
     const { dataDirectory } = await window.electron.checkExerciseFolder();
     if (!dataDirectory) {
-      showNotification({
+      showToast({
         title: "No save location yet",
         message:
           "Open Settings and choose where exercise files should live, then download again.",
-        color: "yellow",
-        icon: <IconFolder size={18} />,
+        tone: "warning",
+        icon: <IconFolder size={18} className="text-[#b54708]" />,
         autoClose: 8000,
       });
       return;
@@ -144,11 +147,11 @@ export const ExercisesPage = () => {
       );
     } catch {
       clearPending(exercise.identifier);
-      showNotification({
+      showToast({
         title: "Could not start the download",
         message: "Check the Setup checklist in Settings and try again.",
-        color: "red",
-        icon: <IconFolder size={18} />,
+        tone: "danger",
+        icon: <IconFolder size={18} className="text-[#b42318]" />,
         autoClose: 8000,
       });
     }
@@ -177,84 +180,70 @@ export const ExercisesPage = () => {
   };
 
   if (exercisesQuery.isLoading) {
-    return (
-      <Center h="100%" w="100%">
-        <Stack align="center" gap="sm">
-          <Loader color="gm-green" />
-          <Text c="dimmed" size="sm">
-            Loading exercises...
-          </Text>
-        </Stack>
-      </Center>
-    );
+    return <LoadingState message="Loading exercises..." />;
   }
 
   if (exercisesQuery.isError) {
     return (
-      <Center h="100%" w="100%">
-        <Text c="red">Could not load the exercise catalog.</Text>
-      </Center>
+      <ErrorState
+        message="Could not load the exercise catalog. Check your connection and try again."
+        onRetry={() => void exercisesQuery.refetch()}
+      />
     );
   }
 
   return (
-    <Box h="100%" w="100%" className="overflow-y-auto bg-white">
-      <Box px={28} py={22} maw={820}>
-        <Title order={1} c="#333" fw={600}>
+    <div className="h-full w-full overflow-y-auto bg-white">
+      <div className="max-w-[820px] px-7 py-6">
+        <h1 className="font-heading text-[2.05rem]/[1.3] font-semibold text-[#333]">
           Git-Mastery: Exercises
-        </Title>
-        <Text mt={8} mb="lg" c="#555" style={{ fontSize: "1.02rem" }}>
+        </h1>
+        <p className="mt-2 mb-6 text-base text-neutral-500">
           Practice Git with hands-on exercises. Browse the full catalog, or
           continue one you have already downloaded.
-        </Text>
+        </p>
 
-        <Flex gap="md" wrap="wrap" align="flex-end" mb="lg">
-          <TextInput
+        <div className="mb-6 flex flex-wrap items-end gap-4">
+          <SearchInput
             placeholder="Search exercises, lessons, or tours"
-            leftSection={<IconSearch size={16} />}
+            aria-label="Search exercises"
             value={search}
             onChange={(event) => setSearch(event.currentTarget.value)}
-            className="min-w-[240px] flex-1"
-            variant="default"
           />
           <Tabs
             value={filter}
-            onChange={(value) => {
-              if (value) setFilter(value as ExerciseFilter);
-            }}
-            color="gm-green"
-          >
-            <Tabs.List>
-              <Tabs.Tab value="all">All ({allExercises.length})</Tabs.Tab>
-              <Tabs.Tab value="downloaded">
-                Downloaded ({downloadedCount})
-              </Tabs.Tab>
-            </Tabs.List>
-          </Tabs>
-        </Flex>
+            onChange={setFilter}
+            items={[
+              { value: "all", label: "All", count: allExercises.length },
+              {
+                value: "downloaded",
+                label: "Downloaded",
+                count: downloadedCount,
+              },
+            ]}
+          />
+        </div>
 
         {filteredExercises.length === 0 ? (
-          <Text c="#667085" fs="italic">
-            {filter === "downloaded"
-              ? "No downloaded exercises yet. Switch to All to download one."
-              : "No exercises match your search."}
-          </Text>
+          filter === "downloaded" ? (
+            <EmptyState
+              icon={<IconDownload size={24} />}
+              title="No downloaded exercises yet"
+              hint="Switch to All to browse the catalog and download your first exercise."
+            />
+          ) : (
+            <EmptyState
+              icon={<IconSearch size={24} />}
+              title="No exercises match your search"
+              hint="Try a different exercise, lesson, or tour name."
+            />
+          )
         ) : (
-          <Stack gap={28}>
+          <div className="flex flex-col gap-7">
             {groupedExercises.map(([tourName, exercises]) => (
-              <Box key={tourName}>
-                <Title
-                  order={2}
-                  c="#333"
-                  mb={6}
-                  style={{
-                    borderBottom: "1px solid #e6e6e6",
-                    paddingBottom: 8,
-                  }}
-                >
-                  {formatTourName(tourName)}
-                </Title>
-                <Stack gap={0}>
+              <div key={tourName}>
+                <SectionTitle>{formatTourName(tourName)}</SectionTitle>
+                <div className="flex flex-col">
                   {exercises.map((exercise) => (
                     <ExerciseRow
                       key={exercise.identifier}
@@ -273,13 +262,13 @@ export const ExercisesPage = () => {
                       onSelect={() => handleSelect(exercise)}
                     />
                   ))}
-                </Stack>
-              </Box>
+                </div>
+              </div>
             ))}
-          </Stack>
+          </div>
         )}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 
@@ -298,47 +287,48 @@ const ExerciseRow = ({
   isDownloaded: boolean;
   onSelect: () => void;
 }) => {
-  const statusStyle = status ? STATUS_STYLES[status] : null;
+  const statusStyle = statusStyleFor(status);
   const lessonTitle = getExerciseLessonTitle(exercise);
 
   return (
-    <Flex
-      align="center"
-      justify="space-between"
-      gap="md"
-      py={12}
-      style={{
-        borderBottom: "1px solid #eee",
-        background: isActive ? "rgba(45, 134, 78, 0.06)" : undefined,
-        marginLeft: isActive ? -8 : 0,
-        marginRight: isActive ? -8 : 0,
-        paddingLeft: isActive ? 8 : 0,
-        paddingRight: isActive ? 8 : 0,
-      }}
+    <div
+      className={`flex items-center justify-between gap-4 border-b border-neutral-200 py-3 ${
+        isActive ? "-mx-2 bg-brand-600/[0.06] px-2" : ""
+      }`}
     >
-      <UnstyledButton onClick={onSelect} className="min-w-0 flex-1 text-left">
-        <Text
-          c="gm-green"
-          fw={600}
-          style={{ fontSize: "1.02rem" }}
-          className="hover:underline"
-        >
-          → {formatExerciseTitle(exercise)}
-        </Text>
-        <Text size="sm" c="#666" mt={2}>
-          {lessonTitle}
-          {exercise.detour ? " · Detour" : ""}
-          {statusStyle ? ` · ${statusStyle.label}` : ""}
-          {isActive ? " · Active" : ""}
-        </Text>
-      </UnstyledButton>
+      <button
+        type="button"
+        onClick={onSelect}
+        className="min-w-0 flex-1 text-left focus-visible:outline-none"
+      >
+        <span className="block truncate text-base font-semibold text-brand-700 hover:underline">
+          {formatExerciseTitle(exercise)}
+        </span>
+        <span className="mt-1 flex items-center gap-2 text-[13px] text-neutral-500">
+          {/* min-w-0 lets the label shrink so the pills stay on the meta row
+              instead of wrapping onto a line of their own. */}
+          <span className="min-w-0 truncate">
+            {lessonTitle}
+            {exercise.detour ? " · Detour" : ""}
+          </span>
+          {statusStyle && (
+            <StatusPill tone={statusStyle.tone} className="shrink-0">
+              {statusStyle.label}
+            </StatusPill>
+          )}
+          {isDownloading && (
+            <StatusPill tone="info" className="shrink-0">
+              Downloading
+            </StatusPill>
+          )}
+          {isActive && <span className="shrink-0 text-brand-700">Active</span>}
+        </span>
+      </button>
       <Button
-        size="xs"
-        radius="sm"
-        variant={isDownloaded ? "outline" : "filled"}
-        color="gm-green"
+        size="sm"
+        variant={isDownloaded ? "outline" : "primary"}
         loading={isDownloading}
-        leftSection={
+        leftIcon={
           isDownloaded ? (
             <IconPlayerPlay size={14} />
           ) : (
@@ -349,6 +339,6 @@ const ExerciseRow = ({
       >
         {isDownloaded ? "Continue" : "Download"}
       </Button>
-    </Flex>
+    </div>
   );
 };

@@ -7,7 +7,6 @@ import {
   useContext,
   type ReactNode,
 } from "react";
-import { useModals } from "@mantine/modals";
 import type { Exercise } from "../../types/Exercise";
 import type { Lesson, Tour } from "../../types/Tour";
 
@@ -47,6 +46,8 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
     }
   }, [visible]);
 
+  // Every overlay that needs to be seen — modal, onboarding, settings panel —
+  // claims one of these for as long as it is mounted, via `useEmbeddedSuppressed`.
   const suppressEmbedded = useCallback(() => {
     setSuppressionCount((count) => count + 1);
     let released = false;
@@ -90,28 +91,9 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
         suppressEmbedded,
       }}
     >
-      <ModalSuppression />
       {children}
     </WebContentsViewContext.Provider>
   );
-}
-
-/**
- * Collapses the native view for as long as any Mantine modal is open, so modals
- * stay visible however they are dismissed (button, close icon, Escape, click
- * outside).
- */
-function ModalSuppression() {
-  const { modals } = useModals();
-  const { suppressEmbedded } = useWebContentsView();
-  const hasOpenModal = modals.length > 0;
-
-  useEffect(() => {
-    if (!hasOpenModal) return;
-    return suppressEmbedded();
-  }, [hasOpenModal, suppressEmbedded]);
-
-  return null;
 }
 
 /**

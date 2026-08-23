@@ -1,0 +1,47 @@
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { cx } from "../../utils/cx";
+import { Spinner } from "./Spinner";
+
+type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  /** `ghost` for neutral chrome, `soft` for inline fix-it actions. */
+  variant?: "ghost" | "soft";
+  size?: "sm" | "md";
+  loading?: boolean;
+  /** Icon-only controls always need a label. */
+  "aria-label": string;
+  children: ReactNode;
+};
+
+const VARIANTS = {
+  ghost:
+    "rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700",
+  soft: "rounded-md bg-brand-50 text-brand-700 hover:bg-brand-100",
+} as const;
+
+const SIZES = { sm: "h-7 w-7", md: "h-9 w-9" } as const;
+
+export const IconButton = ({
+  variant = "ghost",
+  size = "md",
+  loading = false,
+  disabled,
+  className,
+  children,
+  ...rest
+}: IconButtonProps) => (
+  <button
+    type="button"
+    disabled={disabled || loading}
+    className={cx(
+      "inline-flex shrink-0 items-center justify-center",
+      "focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:outline-none",
+      VARIANTS[variant],
+      SIZES[size],
+      (disabled || loading) && "pointer-events-none opacity-50",
+      className,
+    )}
+    {...rest}
+  >
+    {loading ? <Spinner size={16} className="text-current" /> : children}
+  </button>
+);

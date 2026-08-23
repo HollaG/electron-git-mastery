@@ -1,4 +1,3 @@
-import { Box } from "@mantine/core";
 import { flushSync } from "react-dom";
 
 type ResizeHandleProps = {
@@ -20,13 +19,8 @@ export const ResizeHandle = ({
   onChange,
 }: ResizeHandleProps) => {
   return (
-    <Box
-      pos="absolute"
-      top={0}
-      {...(invert ? { left: 0 } : { right: 0 })}
-      h="100%"
-      w={6}
-      style={{ cursor: "col-resize", zIndex: 100 }}
+    <div
+      className={`absolute top-0 z-100 h-full w-1.5 cursor-col-resize ${invert ? "left-0" : "right-0"}`}
       onMouseDown={(e) => {
         e.preventDefault();
         const startX = e.clientX;
@@ -54,11 +48,11 @@ export const ResizeHandle = ({
 
         const onUp = () => {
           cancelAnimationFrame(raf);
+          // The variable is left in place rather than removed: React state and
+          // this drag write the same custom property, so clearing it here would
+          // flash the pane back to its default before the commit lands.
           apply(current);
           flushSync(() => onChange(current));
-          for (const name of cssVars) {
-            document.documentElement.style.removeProperty(name);
-          }
           document.removeEventListener("mousemove", onMove);
           document.removeEventListener("mouseup", onUp);
         };

@@ -1,12 +1,44 @@
-@layer theme, base, mantine, components, utilities;
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/preflight.css" layer(base);
-@import "tailwindcss/utilities.css" layer(utilities);
+@import "tailwindcss";
 
 @theme {
   --font-body: "Inter", system-ui, sans-serif;
   --font-heading: "Noto Serif", Georgia, serif;
-  --color-gm-green: #2d864e;
+
+  --color-brand-50: #f2faf5;
+  --color-brand-100: #e1f4e8;
+  --color-brand-200: #c8ead4;
+  --color-brand-300: #9ad6af;
+  --color-brand-400: #5dc080;
+  --color-brand-500: #3ba561;
+  --color-brand-600: #2d864e;
+  --color-brand-700: #236e3d;
+  --color-brand-800: #1c5a31;
+  --color-brand-900: #164928;
+
+  --color-gm-green: var(--color-brand-600);
   --color-gm-bone: #f8f8f8;
-  --color-gm-dark-green: #717c4d;
+  --color-gm-olive: #717c4d;
+  --color-gm-dark-green: var(--color-gm-olive);
+
+  --shadow-card: 0 1px 2px rgb(23 23 23 / 0.04), 0 1px 3px rgb(23 23 23 / 0.06);
+}
+
+:root {
+  /* Width of the terminal aside. Written by both App state and ResizeHandle
+     drags, so the native web view can track the pane without a React render. */
+  --gm-aside-width: 512px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-gm-bone);
+  color: #333333;
+  -webkit-font-smoothing: antialiased;
 }

@@ -19,17 +19,14 @@ import {
   useRef,
 } from "react";
 import type { Exercise } from "../../types/Exercise";
-import { useLocalStorage } from "@mantine/hooks";
-import { useModals } from "@mantine/modals";
-import { Button, Checkbox, Flex, Stack, Text } from "@mantine/core";
-import {
-  showNotification,
-  updateNotification,
-  type NotificationData,
-} from "@mantine/notifications";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useElectronStream } from "../hooks/useElectronStream";
 import { useLocalExercises } from "../hooks/query/useLocalExercises";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useModal } from "./ModalContext";
+import { useToast, type ToastOptions } from "./ToastContext";
+import { Button } from "../components/ui/Button";
+import { Checkbox } from "../components/ui/Checkbox";
 
 type ActivityState = {
   currentExercise: Exercise | null;
@@ -45,7 +42,8 @@ const verifyNotificationId = (data: GitMasteryTaskData) =>
   `verify-${data.exerciseIdentifier ?? "exercise"}`;
 
 export function ActivityProvider({ children }: { children: ReactNode }) {
-  const { openModal, closeModal } = useModals();
+  const { openModal, closeModal } = useModal();
+  const { showToast, updateToast } = useToast();
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
 
   const [showOnboardingExercise, setShowOnboardingExercise] = useLocalStorage({
@@ -69,13 +67,13 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     const result = await window.electron.startExercise(exercise.identifier);
     if (result.ok) return;
 
-    showNotification({
+    showToast({
       title: "Could not open the exercise folder",
       message:
         result.error ??
         "Try downloading the exercise again from the exercises list.",
-      color: "red",
-      icon: <IconInfoCircle size={18} />,
+      tone: "danger",
+      icon: <IconInfoCircle size={18} className="text-[#b42318]" />,
       autoClose: 8000,
     });
   };
@@ -87,16 +85,17 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     if (showOnboardingExercise) {
       const modalId = openModal({
         title: "Exercise",
+        size: "sm",
         children: (
-          <Stack>
-            <Text>
+          <div className="flex flex-col gap-4 text-sm text-[#333]">
+            <p>
               You are about to begin doing an exercise. Work through the
               exercise in the terminal and click Verify when you think you are
               done.
-            </Text>
+            </p>
 
             <Checkbox ref={showOnboardingRef} label="Don't show this again" />
-            <Flex justify={"end"}>
+            <div className="flex justify-end">
               <Button
                 onClick={() => {
                   closeModal(modalId);
@@ -109,8 +108,8 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
               >
                 Start
               </Button>
-            </Flex>
-          </Stack>
+            </div>
+          </div>
         ),
       });
     }
@@ -125,12 +124,12 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
    * before any progress output arrived.
    */
   const settleVerifyNotification = (
-    notification: NotificationData & { id: string },
+    notification: ToastOptions & { id: string },
   ) => {
     if (openVerifyNotifications.current.delete(notification.id)) {
-      updateNotification(notification);
+      updateToast(notification.id, notification);
     } else {
-      showNotification(notification);
+      showToast(notification);
     }
   };
 
@@ -142,7 +141,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
     if (!openVerifyNotifications.current.has(id)) {
       openVerifyNotifications.current.add(id);
-      showNotification({
+      showToast({
         id,
         title: "Verifying",
         message: "Verifying...",
@@ -152,7 +151,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    updateNotification({ id, message: data.success!.message });
+    updateToast(id, { message: data.success!.message });
   };
 
   const _onExerciseVerifiedSuccess = (
@@ -164,8 +163,8 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       title: "Verification complete.",
       message: "",
       loading: false,
-      color: "gm-green",
-      icon: <IconInfoCircle size={18} />,
+      tone: "success",
+      icon: <IconInfoCircle size={18} className="text-brand-600" />,
       autoClose: 5000,
       withCloseButton: true,
     });
@@ -181,18 +180,19 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         title: correct
           ? "Exercise completed successfully!"
           : "Exercise solution incorrect",
+        size: "sm",
         children: (
-          <Stack>
-            <Text>
+          <div className="flex flex-col gap-4 text-sm text-[#333]">
+            <p>
               {correct
                 ? "You successfully completed the exercise!"
                 : "Your solution is not correct yet. Keep going and verify again when you are ready."}
-            </Text>
-            {comments && <Text>{comments}</Text>}
-            <Flex justify="end">
+            </p>
+            {comments && <p className="text-neutral-500">{comments}</p>}
+            <div className="flex justify-end">
               <Button onClick={() => closeModal(modalId)}>OK</Button>
-            </Flex>
-          </Stack>
+            </div>
+          </div>
         ),
       });
     }
@@ -209,8 +209,8 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       title: "Verification failed",
       message: data.completed?.message ?? "Please try again",
       loading: false,
-      color: "red",
-      icon: <IconInfoCircle size={18} />,
+      tone: "danger",
+      icon: <IconInfoCircle size={18} className="text-[#b42318]" />,
       autoClose: 5000,
       withCloseButton: true,
     });

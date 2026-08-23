@@ -1,9 +1,9 @@
-import { Flex, Loader, Stack, Text } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import {
   LESSONS_HOME_URL,
   useWebContentsView,
 } from "../../contexts/WebContentsViewContext";
+import { LoadingState } from "../ui/States";
 
 export const WebsiteWrapper = () => {
   const webViewRef = useRef<HTMLDivElement>(null);
@@ -86,21 +86,16 @@ export const WebsiteWrapper = () => {
   }, []);
 
   return (
-    <Flex direction={"column"} className="h-full w-full min-h-0 grow">
-      <Flex
+    <div className="flex h-full min-h-0 w-full grow flex-col">
+      {/* Stays empty apart from the loading state — the native view is painted
+          over these bounds, so anything else here would be invisible. */}
+      <div
         ref={webViewRef}
         id="webcontentsview-placeholder"
-        className="w-full h-full grow justify-center items-center"
+        className="flex h-full w-full grow items-center justify-center"
       >
-        {isLoading && (
-          <Stack align="center" gap="sm">
-            <Loader color="gm-green" />
-            <Text c="dimmed" size="sm">
-              Loading lessons...
-            </Text>
-          </Stack>
-        )}
-      </Flex>
-    </Flex>
+        {isLoading && <LoadingState message="Loading lessons..." />}
+      </div>
+    </div>
   );
 };

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Code, Group, Stack, Text } from "@mantine/core";
 import { IconFolder } from "@tabler/icons-react";
+import { Button } from "../ui/Button";
 
 /**
  * Lets the user pick the folder that exercise files are written to. This is the
@@ -43,41 +43,42 @@ export const FileLocationPanel = ({
   };
 
   return (
-    <Stack gap="md">
-      <Stack gap="xs">
-        <Text>
+    <div className="flex flex-col gap-4 text-sm text-[#333]">
+      <div className="flex flex-col gap-2">
+        <p>
           Practising Git means working with real files on your computer.
           GitMastery creates a folder for each exercise, with the starting files
           already set up for you.
-        </Text>
-        <Text>
+        </p>
+        <p>
           Pick a folder to keep them in — somewhere you can find easily, like
           your Documents or Desktop. You can move it later, but exercises
           already in progress will need to be downloaded again.
-        </Text>
-      </Stack>
+        </p>
+      </div>
 
-      <Group gap="sm" align="center" wrap="nowrap">
-        <IconFolder size={18} />
+      <div className="flex items-center gap-3">
+        <IconFolder size={18} className="shrink-0 text-neutral-500" />
         {folder ? (
-          <Code style={{ wordBreak: "break-all" }}>{folder}</Code>
+          <code className="rounded-md bg-neutral-100 px-2 py-1 font-mono text-[13px] break-all text-[#333]">
+            {folder}
+          </code>
         ) : (
-          <Text c="dimmed" size="sm">
+          <span className="text-[13px] text-neutral-500">
             No folder chosen yet
-          </Text>
+          </span>
         )}
-      </Group>
+      </div>
 
-      <Group>
+      <div className="flex">
         <Button
-          variant={folder ? "default" : "filled"}
-          color="gm-green"
+          variant={folder ? "secondary" : "primary"}
           onClick={pickFolder}
           loading={isPicking}
         >
           {folder ? "Change folder" : "Choose folder"}
         </Button>
-      </Group>
-    </Stack>
+      </div>
+    </div>
   );
 };
