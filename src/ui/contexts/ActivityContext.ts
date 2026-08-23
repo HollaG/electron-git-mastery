@@ -6,9 +6,7 @@ import { createContext, useContext } from "react";
 import type { Exercise } from "../../types/Exercise";
 
 export type ActivityState = {
-  currentExercise: Exercise | null;
   startExercise: (exercise: Exercise) => void;
-  endActivity: () => void;
 };
 
 export const ActivityContext = createContext<ActivityState | null>(null);

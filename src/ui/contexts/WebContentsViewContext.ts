@@ -6,8 +6,8 @@ export const SITE_ORIGIN = "https://git-mastery.org";
 export const LESSONS_HOME_URL = `${SITE_ORIGIN}/lessons/`;
 
 export type WebContentsViewState = {
+  currentUrl: string | null;
   navigate: (url: string) => void;
-  restoreLessonPage: () => void;
   setEmbeddedVisible: (visible: boolean) => void;
   suppressEmbedded: () => () => void;
 };
@@ -40,6 +40,26 @@ export function buildTourHomeUrl(tour: Tour) {
 
 export function buildTourHomeUrlFromName(tourName: string) {
   return `${SITE_ORIGIN}/lessons/trail/${tourName}`;
+}
+
+export function isLessonUrlActive(lesson: Lesson, currentUrl: string | null) {
+  if (!currentUrl) return false;
+  // buildLessonUrl's trailing "/" makes this a safe prefix boundary, and also
+  // matches that lesson's exercise sub-pages (e.g. .../lessons/init/exercise-x).
+  return currentUrl.startsWith(buildLessonUrl(lesson));
+}
+
+export function isTourHomeUrlActive(tour: Tour, currentUrl: string | null) {
+  if (!currentUrl) return false;
+  const base = buildTourHomeUrl(tour);
+  return currentUrl === base || currentUrl.startsWith(`${base}/`);
+}
+
+export function isTourUrlActive(tour: Tour, currentUrl: string | null) {
+  if (isTourHomeUrlActive(tour, currentUrl)) return true;
+  return Object.values(tour.lessons).some((lesson) =>
+    isLessonUrlActive(lesson, currentUrl),
+  );
 }
 
 function lessonNameForExercise(exercise: Exercise) {

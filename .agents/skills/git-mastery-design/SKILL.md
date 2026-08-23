@@ -36,7 +36,7 @@ House design language for Git-Mastery Desktop: bone canvas, solid white surfaces
 1. **Read references before writing UI** — start with [`references/tokens-and-surfaces.md`](references/tokens-and-surfaces.md), then [`references/components-and-patterns.md`](references/components-and-patterns.md).
 2. **Pick a shell mode** (see below). Default to **desktop shell** unless the screen owns the whole window.
 3. **Use existing tokens** — brand green, bone canvas, neutral grays. Do not invent a palette per page.
-4. **Compose from primitives** — solid `Card`, field labels, one primary CTA per cluster, semantic status pills. Reuse house patterns (catalog list, checklist, modal panel).
+4. **Compose from primitives** — solid `Card`, field labels, one primary CTA per cluster, semantic status pills. Reuse house patterns (checklist, modal panel).
 5. **Run the checklist** at the end of [`references/components-and-patterns.md`](references/components-and-patterns.md) before shipping.
 
 ## Design principles
@@ -58,7 +58,7 @@ Two layouts. **Tokens and components are identical**; only chrome and title scal
 
 The normal running state of the app.
 
-- Fixed 64px header (view switch on the left, settings on the right), a main content pane, and a resizable aside holding the terminal.
+- Fixed 64px header (lessons panel toggle on the left, settings on the right), a main content pane, and a resizable aside holding the terminal.
 - **No page-level scroll.** The window is the viewport; each pane owns its own scroll container.
 - Content pane titles use the serif h1 scale; per-view toolbars sit inside the pane, not in the header.
 - The main pane may host the native web view, in which case it must stay an empty bounds placeholder.

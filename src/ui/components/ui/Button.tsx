@@ -41,7 +41,7 @@ export const Button = ({
     type="button"
     disabled={disabled || loading}
     className={cx(
-      "inline-flex items-center justify-center rounded-md font-medium whitespace-nowrap",
+      "inline-flex items-center justify-center rounded-md font-medium whitespace-nowrap hover:cursor-pointer",
       "focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:border-brand-400 focus-visible:outline-none",
       VARIANTS[variant],
       SIZES[size],

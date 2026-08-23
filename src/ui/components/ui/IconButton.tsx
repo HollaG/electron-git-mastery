@@ -33,7 +33,7 @@ export const IconButton = ({
     type="button"
     disabled={disabled || loading}
     className={cx(
-      "inline-flex shrink-0 items-center justify-center",
+      "inline-flex shrink-0 items-center justify-center hover:cursor-pointer",
       "focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:outline-none",
       VARIANTS[variant],
       SIZES[size],

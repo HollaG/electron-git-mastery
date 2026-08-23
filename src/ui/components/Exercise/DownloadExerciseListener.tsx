@@ -5,7 +5,6 @@ import { useToast } from "../../contexts/ToastContext";
 import { useLocalExercises } from "../../hooks/query/useLocalExercises";
 import { useExercises } from "../../hooks/query/useExercises";
 import { useActivity } from "../../contexts/ActivityContext";
-import { useAppView } from "../../contexts/AppViewContext";
 import {
   buildExerciseUrl,
   useWebContentsView,
@@ -24,7 +23,6 @@ export const DownloadExerciseListener = () => {
   const { query: exercisesQuery } = useExercises();
   const { startExercise } = useActivity();
   const { navigate } = useWebContentsView();
-  const { setView } = useAppView();
   const { showToast, updateToast } = useToast();
   // Presence of a command means its notification is already on screen; the
   // value is the tail of its output shown in that notification.
@@ -94,7 +92,6 @@ export const DownloadExerciseListener = () => {
 
       if (selectedExercise) {
         startExercise(selectedExercise);
-        setView("exercises");
         navigate(buildExerciseUrl(selectedExercise));
       }
 
@@ -109,7 +106,6 @@ export const DownloadExerciseListener = () => {
       navigate,
       resolveExercise,
       rescanDownloadedExercises,
-      setView,
       startExercise,
       updateToast,
     ],
