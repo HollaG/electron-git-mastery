@@ -1,28 +1,10 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { Modal } from "../components/ui/Modal";
-
-type ModalOptions = {
-  title?: ReactNode;
-  children: ReactNode;
-  size?: "sm" | "md" | "lg";
-};
-
-type ModalEntry = ModalOptions & { id: string };
-
-type ModalState = {
-  /** Opens a modal and returns the id needed to close it again. */
-  openModal: (options: ModalOptions) => string;
-  closeModal: (id: string) => void;
-};
-
-const ModalContext = createContext<ModalState | null>(null);
+import {
+  ModalContext,
+  type ModalEntry,
+  type ModalOptions,
+} from "./ModalContext";
 
 let nextModalId = 0;
 
@@ -68,12 +50,4 @@ export function ModalProvider({ children }: { children: ReactNode }) {
       ))}
     </ModalContext.Provider>
   );
-}
-
-export function useModal() {
-  const context = useContext(ModalContext);
-  if (!context) {
-    throw new Error("useModal must be used within a ModalProvider");
-  }
-  return context;
 }

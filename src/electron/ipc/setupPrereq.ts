@@ -1,4 +1,4 @@
-import { ipcMain, shell } from "electron";
+import { shell } from "electron";
 import { ipcMainHandle, ipcMainOn } from "../utils/util.js";
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -28,7 +28,7 @@ export const setupPrereqIpc = () => {
     try {
       await downloadGitMasteryApp();
       return true;
-    } catch (e) {
+    } catch {
       return false;
     }
   });

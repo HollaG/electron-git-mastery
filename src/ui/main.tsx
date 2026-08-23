@@ -3,11 +3,11 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WebContentsViewProvider } from "./contexts/WebContentsViewContext";
-import { ActivityProvider } from "./contexts/ActivityContext";
-import { GitMasteryTaskProvider } from "./contexts/GitMasteryTaskContext";
-import { ModalProvider } from "./contexts/ModalContext";
-import { ToastProvider } from "./contexts/ToastContext";
+import { WebContentsViewProvider } from "./contexts/WebContentsViewProvider";
+import { ActivityProvider } from "./contexts/ActivityProvider";
+import { GitMasteryTaskProvider } from "./contexts/GitMasteryTaskProvider";
+import { ModalProvider } from "./contexts/ModalProvider";
+import { ToastProvider } from "./contexts/ToastProvider";
 
 const queryClient = new QueryClient();
 

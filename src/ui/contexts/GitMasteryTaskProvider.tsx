@@ -1,26 +1,9 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useCallback,
-} from "react";
+import { useEffect, useRef, useCallback } from "react";
 import type { ReactNode } from "react";
-
-export type GitMasteryTaskListener = {
-  condition: (command: string) => boolean;
-  callback: (command: string, data: GitMasteryTaskData) => void;
-};
-
-export type GitMasteryTaskState = {
-  /** Register a callback for incoming task data. Returns an unsubscribe function. */
-  addListener: (
-    condition: (command: string) => boolean,
-    callback: (command: string, data: GitMasteryTaskData) => void,
-  ) => () => void;
-};
-
-const GitMasteryTaskContext = createContext<GitMasteryTaskState | null>(null);
+import {
+  GitMasteryTaskContext,
+  type GitMasteryTaskListener,
+} from "./GitMasteryTaskContext";
 
 /**
  * Mount this provider once near the root of the tree.
@@ -62,20 +45,4 @@ export function GitMasteryTaskProvider({ children }: { children: ReactNode }) {
       {children}
     </GitMasteryTaskContext.Provider>
   );
-}
-
-/**
- * Consume GitMastery task state from any component inside the provider.
- *
- * @example
- *   const { addListener } = useGitMasteryTask();
- */
-export function useGitMasteryTask(): GitMasteryTaskState {
-  const ctx = useContext(GitMasteryTaskContext);
-  if (!ctx) {
-    throw new Error(
-      "useGitMasteryTask must be used inside <GitMasteryTaskProvider>",
-    );
-  }
-  return ctx;
 }
