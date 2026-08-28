@@ -1,13 +1,14 @@
 import { createContext, useContext } from "react";
 import type { Exercise } from "../../types/Exercise";
 import type { Lesson, Tour } from "../../types/Tour";
+import { getExerciseLessonName } from "../utils/format";
 
 export const SITE_ORIGIN = "https://git-mastery.org";
 export const LESSONS_HOME_URL = `${SITE_ORIGIN}/lessons/`;
 
 export type WebContentsViewState = {
+  currentUrl: string | null;
   navigate: (url: string) => void;
-  restoreLessonPage: () => void;
   setEmbeddedVisible: (visible: boolean) => void;
   suppressEmbedded: () => () => void;
 };
@@ -42,15 +43,30 @@ export function buildTourHomeUrlFromName(tourName: string) {
   return `${SITE_ORIGIN}/lessons/trail/${tourName}`;
 }
 
-function lessonNameForExercise(exercise: Exercise) {
-  return exercise.lesson?.lesson_name ?? exercise.detour?.lesson?.lesson_name;
+export function isLessonUrlActive(lesson: Lesson, currentUrl: string | null) {
+  if (!currentUrl) return false;
+  // Trailing "/" on buildLessonUrl is a safe prefix boundary (including hashes).
+  return currentUrl.startsWith(buildLessonUrl(lesson));
+}
+
+export function isTourHomeUrlActive(tour: Tour, currentUrl: string | null) {
+  if (!currentUrl) return false;
+  const base = buildTourHomeUrl(tour);
+  return currentUrl === base || currentUrl.startsWith(`${base}/`);
+}
+
+export function isTourUrlActive(tour: Tour, currentUrl: string | null) {
+  if (isTourHomeUrlActive(tour, currentUrl)) return true;
+  return Object.values(tour.lessons).some((lesson) =>
+    isLessonUrlActive(lesson, currentUrl),
+  );
 }
 
 export function buildExerciseUrl(exercise: Exercise) {
-  const lessonName = lessonNameForExercise(exercise);
+  const lessonName = getExerciseLessonName(exercise);
   if (!lessonName) {
     return SITE_ORIGIN;
   }
 
-  return `${SITE_ORIGIN}/lessons/${lessonName}/exercise-${exercise.identifier}`;
+  return `${SITE_ORIGIN}/lessons/${lessonName}/#exercise-${exercise.identifier}`;
 }

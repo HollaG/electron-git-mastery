@@ -5,16 +5,11 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import {
-  LESSONS_HOME_URL,
-  WebContentsViewContext,
-} from "../contexts/WebContentsViewContext";
-
-const isExerciseUrl = (url: string) => /\/exercise-/.test(url);
+import { WebContentsViewContext } from "../contexts/WebContentsViewContext";
 
 export function WebContentsViewProvider({ children }: { children: ReactNode }) {
   const currentUrlRef = useRef<string | null>(null);
-  const lastLessonUrlRef = useRef(LESSONS_HOME_URL);
+  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
 
   // The WebContentsView is a native child view that always paints above the
   // React DOM, so anything rendered in the DOM (modals, full page React views)
@@ -48,9 +43,7 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
 
   const rememberUrl = useCallback((url: string) => {
     currentUrlRef.current = url;
-    if (!isExerciseUrl(url)) {
-      lastLessonUrlRef.current = url;
-    }
+    setCurrentUrl(url);
   }, []);
 
   const navigate = useCallback(
@@ -62,10 +55,6 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
     [rememberUrl],
   );
 
-  const restoreLessonPage = useCallback(() => {
-    navigate(lastLessonUrlRef.current || LESSONS_HOME_URL);
-  }, [navigate]);
-
   useEffect(() => {
     return window.electron.onWcvUrlChanged(rememberUrl);
   }, [rememberUrl]);
@@ -73,8 +62,8 @@ export function WebContentsViewProvider({ children }: { children: ReactNode }) {
   return (
     <WebContentsViewContext.Provider
       value={{
+        currentUrl,
         navigate,
-        restoreLessonPage,
         setEmbeddedVisible,
         suppressEmbedded,
       }}

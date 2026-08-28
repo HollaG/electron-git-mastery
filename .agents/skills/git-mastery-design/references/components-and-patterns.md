@@ -10,8 +10,7 @@ Build screens from these composable pieces:
 
 | Primitive                        | Role                                                |
 | -------------------------------- | --------------------------------------------------- |
-| `AppHeader`                      | Fixed 64px bar — view switch left, settings right   |
-| `ViewSwitch`                     | Pill segmented control for top-level views          |
+| `AppHeader`                      | Fixed 64px bar — panel toggle left, settings right  |
 | `Card`                           | Solid white panel with border (and optional shadow) |
 | `SectionTitle`                   | Serif group header with hairline underline          |
 | `ListRow`                        | Dense catalog / result row with trailing action     |
@@ -38,21 +37,12 @@ Build screens from these composable pieces:
 
 ```text
 h-16 bg-white border-b border-neutral-200 px-4
-left:  contextual panel toggle + ViewSwitch
+left:  contextual panel toggle
 right: settings icon button
 overflow-visible so dropdowns escape the bar
 ```
 
 The header is chrome, not a page title bar — view titles live inside the content pane.
-
-### ViewSwitch (segmented control)
-
-```text
-container: inline-flex rounded-full bg-neutral-100 p-0.5
-idle:      13px medium text-neutral-600, rounded-full px-3 py-1.5
-active:    bg-brand-600 text-white shadow-sm
-label:     14–15px icon + text, gap 6px, whitespace-nowrap
-```
 
 ### Card
 
@@ -227,7 +217,7 @@ Empty and error must read differently — "nothing matches your search" is not "
 
 ```text
 ┌───────────────────────────────────────────────────────────┐
-│ header 64px — ViewSwitch ......................  settings  │
+│ header 64px — panel toggle ....................  settings  │
 ├──────────────┬─────────────────────────┬──────────────────┤
 │ side panel   │ main pane               │ terminal aside   │
 │ 300px        │ flex-1, min-w-0         │ resizable, 512px │
@@ -238,7 +228,7 @@ Empty and error must read differently — "nothing matches your search" is not "
 
 - `html, body, #root { height: 100% }`; the shell is `h-dvh overflow-hidden`. Nothing scrolls at window level.
 - Every flex child that can hold long content needs `min-h-0 min-w-0`, otherwise it refuses to shrink and pushes the terminal off screen.
-- The main pane is a positioning context: the native view placeholder fills it, and DOM views (such as the catalog) sit in an `absolute inset-0` layer above it with a solid white background.
+- The main pane is a positioning context: the native view placeholder fills it, and any DOM view sits in an `absolute inset-0` layer above it with a solid white background.
 
 ### ResizeHandle
 
@@ -265,26 +255,10 @@ flowchart TB
 Rules:
 
 1. **Never** place DOM content over the view's bounds and expect it to show — overlays and `z-index` lose against the native layer.
-2. Anything that must appear above it (modal, dropdown that overhangs the pane, onboarding, catalog overlay) has to claim a suppression for as long as it is mounted, via the `useEmbeddedSuppressed` hook.
+2. Anything that must appear above it (modal, dropdown that overhangs the pane, onboarding) has to claim a suppression for as long as it is mounted, via the `useEmbeddedSuppressed` hook.
 3. The placeholder div stays empty apart from a loading state, and its bounds are pushed to the main process in CSS pixels multiplied by `devicePixelRatio`, re-sent on both resize and DPR change.
 4. Show and hide with **zero transition duration**. The native layer cannot fade with the DOM, so any animation reads as a flicker.
 5. Rounded corners and shadows stop at the pane edge — the view has square corners and cannot be clipped by CSS.
-
-### Catalog list view
-
-```text
-scroll container (bg-white, overflow-y-auto)
-  └─ content column, px-7 py-6, max-w-[820px]
-       serif h1 title
-       16px muted lead paragraph
-       toolbar: SearchInput (flex-1) + TabFilter, wrap, items-end
-       groups (gap-7):
-         SectionTitle
-         ListRow · ListRow · ListRow
-       empty state when filters match nothing
-```
-
-Filtering is **live** — typing narrows results immediately. There is no apply step and no pagination; group and scroll instead.
 
 ### First-run / setup flow
 
@@ -389,7 +363,7 @@ Copy and verify before shipping:
   /* Serif page title */
 }
 <h1 className="font-heading text-[2.05rem]/[1.3] font-semibold text-[#333]">
-  Git-Mastery: Exercises
+  Git-Mastery: Setup
 </h1>;
 
 {

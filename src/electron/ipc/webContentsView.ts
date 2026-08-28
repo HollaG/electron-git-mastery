@@ -44,6 +44,24 @@ function setLoading(mainWindow: BrowserWindow, loading: boolean) {
   sendToRenderer(mainWindow, "wcv-loading", { loading });
 }
 
+function normalizePathname(pathname: string) {
+  return pathname.replace(/\/index\.html$/, "/").replace(/\/+$/, "") || "/";
+}
+
+/** Hash-only navigations on the same lesson must not loadURL (that hides the view). */
+function isSameDocumentHashChange(currentUrl: string, targetUrl: string) {
+  try {
+    const current = new URL(currentUrl);
+    const target = new URL(targetUrl);
+    return (
+      current.origin === target.origin &&
+      normalizePathname(current.pathname) === normalizePathname(target.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
   if (!wcv) {
     wcv = new WebContentsView({
@@ -81,20 +99,21 @@ function getOrCreateWcv(mainWindow: BrowserWindow): WebContentsView {
       await wcv!.webContents.insertCSS(EMBED_CSS).catch(() => {});
     });
 
-    injectDownloadExercise(mainWindow);
-    injectVerifyExercise(mainWindow);
+    injectExerciseButtons(mainWindow);
   }
   return wcv;
 }
 
 /**
- * Injects a "Start Exercise" button into the WCV page, replacing the
- * matching download-info div. When clicked, the button uses window.wcvBridge
- * (exposed by wcv-preload.cts) to fire an IPC event back to the main process.
+ * Injects the "Start Exercise" / "Verify Solution" buttons into the WCV page.
+ * The download-info div is removed outright; the verify-info div is replaced
+ * with both buttons side by side, so they sit together at the bottom of the
+ * exercise box. Clicking either uses window.wcvBridge (exposed by
+ * wcv-preload.cts) to fire an IPC event back to the main process.
  *
  * Returns a cleanup function that removes the dom-ready listener.
  */
-function injectDownloadExercise(mainWindow: BrowserWindow) {
+function injectExerciseButtons(mainWindow: BrowserWindow) {
   const wcv = getOrCreateWcv(mainWindow);
 
   // Listen for IPC messages sent from the WCV page via window.wcvBridge.send()
@@ -102,71 +121,10 @@ function injectDownloadExercise(mainWindow: BrowserWindow) {
     if (channel === "wcv-start-exercise") {
       const { exerciseId } = args[0] as { exerciseId: string };
       console.log("[wcv] start exercise clicked:", exerciseId);
-      // onStartExercise(exerciseId);
-
-      // call gitmastery download ${exerciseIdentifier}
       _download(mainWindow, `${exerciseId}`);
-    }
-  });
-
-  const handler = async () => {
-    // All DOM manipulation must live inside the executeJavaScript string —
-    // DOM nodes cannot cross the process boundary.
-    // window.wcvBridge is available because wcv-preload.cts is loaded.
-    console.log("now executing javascript to replace button for download");
-    await wcv.webContents.executeJavaScript(`
-      (function() {
-        /**
-         * Replaces all ex-download-info-XX divs with a "Start Exercise" button.
-         * Safe to call multiple times: already-replaced elements won't match
-         * the querySelector since they are no longer divs with that id.
-         */
-        function replaceDownloadDivs() {
-          const els = document.querySelectorAll('div[id^="ex-download-info-"]');
-          els.forEach((el) => {
-            const id = el.id.replace("ex-download-info-", "");
-            const btn = document.createElement("button");
-            btn.textContent = "Start Exercise";
-            btn.style.cssText = "padding:8px 16px; background:#6366f1; color:white; border:none; border-radius:6px; cursor:pointer;";
-            btn.addEventListener("click", () => {
-              window.wcvBridge.send("wcv-start-exercise", { exerciseId: id });
-            });
-            el.replaceWith(btn);
-            console.log("replaced div: ", el.id);
-          });
-        }
-
-        // Run immediately for any divs already present on dom-ready
-        replaceDownloadDivs();
-
-        // Watch every .card-collapse for internal DOM changes (e.g. expanding
-        // a collapsed section that injects new ex-download-info- divs).
-        const cardCollapses = document.querySelectorAll('.card-collapse');
-        cardCollapses.forEach((cardCollapse) => {
-          const observer = new MutationObserver(() => {
-            replaceDownloadDivs();
-          });
-          observer.observe(cardCollapse, { childList: true, subtree: true });
-        });
-      })()
-    `);
-  };
-
-  wcv.webContents.addListener("dom-ready", handler);
-  return () => wcv.webContents.removeListener("dom-ready", handler);
-}
-
-function injectVerifyExercise(mainWindow: BrowserWindow) {
-  const wcv = getOrCreateWcv(mainWindow);
-
-  // Listen for IPC messages sent from the WCV page via window.wcvBridge.send()
-  wcv.webContents.on("ipc-message", (_event, channel, ...args) => {
-    if (channel === "wcv-verify-exercise") {
+    } else if (channel === "wcv-verify-exercise") {
       const { exerciseId } = args[0] as { exerciseId: string };
       console.log("[wcv] verify exercise clicked:", exerciseId);
-      // onStartExercise(exerciseId);
-
-      // call gitmastery download ${exerciseIdentifier}
       _verify(mainWindow, exerciseId);
     }
   });
@@ -175,41 +133,131 @@ function injectVerifyExercise(mainWindow: BrowserWindow) {
     // All DOM manipulation must live inside the executeJavaScript string —
     // DOM nodes cannot cross the process boundary.
     // window.wcvBridge is available because wcv-preload.cts is loaded.
-    console.log("now executing javascript to replace button for verify");
+    console.log("now executing javascript to inject exercise buttons");
     await wcv.webContents.executeJavaScript(`
       (function() {
+        var SOLID_BG = "#2d864e";
+        var SOLID_HOVER = "#236e3d";
+        var OUTLINE_TEXT = "#236e3d";
+        var OUTLINE_BORDER = "#2d864e";
+        var OUTLINE_HOVER_BG = "#f2faf5";
+
+        var ICON_DOWNLOAD = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>';
+        var ICON_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg>';
+
+        var BASE_STYLE = "display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:6px; font-size:14px; font-weight:500; font-family:Inter,system-ui,sans-serif; cursor:pointer; line-height:20px;";
+
+        function styleSolid(btn) {
+          btn.style.cssText = BASE_STYLE + "background:" + SOLID_BG + "; color:#fff; border:none; box-shadow:0 1px 2px rgba(0,0,0,0.05);";
+          btn.addEventListener("mouseenter", function () { btn.style.background = SOLID_HOVER; });
+          btn.addEventListener("mouseleave", function () { btn.style.background = SOLID_BG; });
+        }
+
+        function styleOutline(btn) {
+          btn.style.cssText = BASE_STYLE + "background:transparent; color:" + OUTLINE_TEXT + "; border:1px solid " + OUTLINE_BORDER + ";";
+          btn.addEventListener("mouseenter", function () { btn.style.background = OUTLINE_HOVER_BG; });
+          btn.addEventListener("mouseleave", function () { btn.style.background = "transparent"; });
+        }
+
+        function createStartButton(id) {
+          var btn = document.createElement("button");
+          btn.innerHTML = ICON_DOWNLOAD + '<span>Start Exercise</span>';
+          styleSolid(btn);
+          btn.addEventListener("click", function () {
+            window.wcvBridge.send("wcv-start-exercise", { exerciseId: id });
+          });
+          return btn;
+        }
+
+        function createVerifyButton(id) {
+          var btn = document.createElement("button");
+          btn.innerHTML = ICON_CHECK + '<span>Verify Solution</span>';
+          styleOutline(btn);
+          btn.addEventListener("click", function () {
+            window.wcvBridge.send("wcv-verify-exercise", { exerciseId: id });
+          });
+          return btn;
+        }
+
         /**
-         * Replaces all ex-verify-info-XX divs with a "Start Exercise" button.
-         * Safe to call multiple times: already-replaced elements won't match
-         * the querySelector since they are no longer divs with that id.
+         * Removes the old download-info divs (their button now lives
+         * alongside Verify) and replaces each verify-info div with both
+         * buttons side by side. Safe to call multiple times: already-handled
+         * elements no longer match either selector.
          */
-        function replaceVerifyDivs() {
-          const els = document.querySelectorAll('div[id^="ex-verify-info-"]');
-          els.forEach((el) => {
-            const id = el.id.replace("ex-verify-info-", "");
-            const btn = document.createElement("button");
-            btn.textContent = "Verify Solution";
-            btn.style.cssText = "padding:8px 16px; background:#6366f1; color:white; border:none; border-radius:6px; cursor:pointer;";
-            btn.addEventListener("click", () => {
-              window.wcvBridge.send("wcv-verify-exercise", { exerciseId: id });
-            });
-            el.replaceWith(btn);
-            console.log("replaced div: ", el.id);
+        function injectButtons() {
+          document.querySelectorAll('div[id^="ex-download-info-"]').forEach(function (el) {
+            el.remove();
+          });
+
+          document.querySelectorAll('div[id^="ex-verify-info-"]').forEach(function (el) {
+            var id = el.id.replace("ex-verify-info-", "");
+            var container = document.createElement("div");
+            container.style.cssText = "display:flex; align-items:center; gap:8px; margin-top:12px; padding-bottom:20px;";
+            container.appendChild(createStartButton(id));
+            container.appendChild(createVerifyButton(id));
+            el.replaceWith(container);
+            console.log("replaced verify div: ", el.id);
           });
         }
 
-        // Run immediately for any divs already present on dom-ready
-        replaceVerifyDivs();
+        var observedCollapses = window.__gmObservedCollapses || (window.__gmObservedCollapses = new WeakSet());
 
-        // Watch every .card-collapse for internal DOM changes (e.g. expanding
-        // a collapsed section that injects new ex-download-info- divs).
-        const cardCollapses = document.querySelectorAll('.card-collapse');
-        cardCollapses.forEach((cardCollapse) => {
-          const observer = new MutationObserver(() => {
-            replaceVerifyDivs();
+        function observeCardCollapses() {
+          document.querySelectorAll('.card-collapse').forEach(function (cardCollapse) {
+            if (observedCollapses.has(cardCollapse)) return;
+            observedCollapses.add(cardCollapse);
+            var observer = new MutationObserver(function () {
+              injectButtons();
+            });
+            observer.observe(cardCollapse, { childList: true, subtree: true });
           });
-          observer.observe(cardCollapse, { childList: true, subtree: true });
-        });
+        }
+
+        function isCardCollapsed(card) {
+          var header = card.querySelector('.card-header');
+          if (header) {
+            var expanded = header.getAttribute('aria-expanded');
+            if (expanded === 'true') return false;
+            if (expanded === 'false') return true;
+          }
+          // Collapsed MarkBind panels keep an empty .card-collapse (comment + hidden hr).
+          return !card.querySelector('.card-body');
+        }
+
+        function expandHashTarget() {
+          var id = (location.hash || '').replace(/^#/, '');
+          if (!id) return;
+          var el = document.getElementById(id);
+          if (!el) return;
+          var card = el.closest('.card');
+          if (!card) {
+            el.scrollIntoView({ block: 'start' });
+            return;
+          }
+          var header = card.querySelector('.card-header') || card;
+          if (isCardCollapsed(card)) {
+            header.click();
+            setTimeout(function () {
+              observeCardCollapses();
+              injectButtons();
+              el.scrollIntoView({ block: 'start' });
+            }, 50);
+          }
+          el.scrollIntoView({ block: 'start' });
+          observeCardCollapses();
+          injectButtons();
+        }
+
+        injectButtons();
+        observeCardCollapses();
+        expandHashTarget();
+
+        if (!window.__gmExercisePageHooks) {
+          window.__gmExercisePageHooks = true;
+          window.addEventListener('hashchange', expandHashTarget);
+          window.addEventListener('load', expandHashTarget);
+        }
       })()
     `);
   };
@@ -281,8 +329,17 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
 
   ipcMainOn("wcv-navigate", ({ url }: { url: string }) => {
     console.log("[info] wcv-navigate event received");
+    const view = getOrCreateWcv(mainWindow);
+    const currentUrl = view.webContents.getURL();
+    if (currentUrl && isSameDocumentHashChange(currentUrl, url)) {
+      const hash = new URL(url).hash;
+      void view.webContents.executeJavaScript(
+        `location.hash = ${JSON.stringify(hash)};`,
+      );
+      return;
+    }
     setLoading(mainWindow, true);
-    getOrCreateWcv(mainWindow).webContents.loadURL(url);
+    view.webContents.loadURL(url);
   });
 
   // Temporarily hide the wcv, whenever we need to display a full screen modal.

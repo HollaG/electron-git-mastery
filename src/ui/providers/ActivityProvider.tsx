@@ -11,7 +11,7 @@
 // here is therefore keyed off the exercise identifier in the stream payload
 // rather than off the current activity.
 
-import { useState, type ReactNode, useRef } from "react";
+import { type ReactNode, useRef } from "react";
 import type { Exercise } from "../../types/Exercise";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useElectronStream } from "../hooks/useElectronStream";
@@ -31,7 +31,6 @@ const verifyNotificationId = (data: GitMasteryTaskData) =>
 export function ActivityProvider({ children }: { children: ReactNode }) {
   const { openModal, closeModal } = useModal();
   const { showToast, updateToast } = useToast();
-  const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
 
   const [showOnboardingExercise, setShowOnboardingExercise] = useLocalStorage({
     key: "showOnboardingExercise",
@@ -40,7 +39,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   const showOnboardingRef = useRef<HTMLInputElement>(null);
 
-  const { rescanDownloadedExercises } = useLocalExercises();
+  const { downloadedExerciseData, patchExerciseStatus } = useLocalExercises();
 
   /** Verify notifications currently on screen, keyed by notification id. */
   const openVerifyNotifications = useRef<Set<string>>(new Set());
@@ -66,7 +65,6 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   };
 
   const startExercise = (exercise: Exercise) => {
-    setCurrentExercise(exercise);
     void enterExerciseDirectory(exercise);
 
     if (showOnboardingExercise) {
@@ -100,10 +98,6 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
         ),
       });
     }
-  };
-
-  const endActivity = () => {
-    setCurrentExercise(null);
   };
 
   /**
@@ -184,7 +178,15 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       });
     }
 
-    rescanDownloadedExercises();
+    const exerciseIdentifier = data.exerciseIdentifier;
+    if (exerciseIdentifier && correct) {
+      patchExerciseStatus(exerciseIdentifier, "completed");
+    } else if (exerciseIdentifier && incorrect) {
+      const current = downloadedExerciseData?.[exerciseIdentifier]?.status;
+      if (current === "downloaded" || current === undefined) {
+        patchExerciseStatus(exerciseIdentifier, "in-progress");
+      }
+    }
   };
 
   const _onExerciseVerifiedFailure = (
@@ -213,9 +215,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   return (
     <ActivityContext.Provider
       value={{
-        currentExercise,
         startExercise,
-        endActivity,
       }}
     >
       {children}

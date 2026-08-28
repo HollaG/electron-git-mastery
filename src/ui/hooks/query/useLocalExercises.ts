@@ -1,21 +1,38 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCustomQuery } from "./useCustomQuery";
 
-// Gets a list of the progress of the locally downloaded exercises
-export const useLocalExercises = () => {
-  // Why we can use this hook and eg. rescanDownloadedExercises in multiple places
-  // and have the update propagate:
-  // `useQuery` caches the result of 'downloaded-exercises'
-  // When one hook calls refetch(), it invalidates all hooks that use this query key
-  // and causes them to refetch.
+export const DOWNLOADED_EXERCISES_QUERY_KEY = ["downloaded-exercises"] as const;
 
-  const { data: downloadedExerciseData, refetch: rescanDownloadedExercises } =
-    useCustomQuery({
-      queryKey: ["downloaded-exercises"],
-      queryFn: () => window.electron.getDownloadedExercises(),
-    });
+// Gets a list of the progress of the locally downloaded exercises.
+// Computed once from CLI progress.json + exercise folders, then patched in
+// memory (download / verify) so we never re-walk the filesystem.
+export const useLocalExercises = () => {
+  const queryClient = useQueryClient();
+
+  const { data: downloadedExerciseData } = useCustomQuery({
+    queryKey: DOWNLOADED_EXERCISES_QUERY_KEY,
+    queryFn: () => window.electron.getDownloadedExercises(),
+    options: {
+      staleTime: Infinity,
+      gcTime: Infinity,
+    },
+  });
+
+  const patchExerciseStatus = (
+    exerciseIdentifier: string,
+    status: ProgressState,
+  ) => {
+    queryClient.setQueryData<ProgressData>(
+      DOWNLOADED_EXERCISES_QUERY_KEY,
+      (previous) => ({
+        ...(previous ?? {}),
+        [exerciseIdentifier]: { status },
+      }),
+    );
+  };
 
   return {
     downloadedExerciseData,
-    rescanDownloadedExercises,
+    patchExerciseStatus,
   };
 };

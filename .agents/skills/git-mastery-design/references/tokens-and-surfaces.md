@@ -57,7 +57,7 @@ Hard destructive button: `#b42318`, hover `#912018`.
 
 ### Exercise status mapping
 
-The catalog already encodes this; keep new surfaces consistent with it.
+Keep any surface that reports exercise state consistent with this.
 
 | Status                     | Pill style                                               |
 | -------------------------- | -------------------------------------------------------- |
@@ -113,21 +113,21 @@ Content panes cap readable text at ~820px; full-width is reserved for lists and 
 
 ## 4. Radius
 
-| Surface                      | Radius     | Tailwind       |
-| ---------------------------- | ---------- | -------------- |
-| Page card / modal            | **16px**   | `rounded-2xl`  |
-| Icon chip                    | **12px**   | `rounded-xl`   |
-| Input / select               | **12px**   | `rounded-xl`   |
-| Default button               | **6px**    | `rounded-md`   |
-| Segmented switch / page chip | **9999px** | `rounded-full` |
-| Status pill                  | **4–6px**  | `rounded`      |
+| Surface           | Radius     | Tailwind       |
+| ----------------- | ---------- | -------------- |
+| Page card / modal | **16px**   | `rounded-2xl`  |
+| Icon chip         | **12px**   | `rounded-xl`   |
+| Input / select    | **12px**   | `rounded-xl`   |
+| Default button    | **6px**    | `rounded-md`   |
+| Page chip         | **9999px** | `rounded-full` |
+| Status pill       | **4–6px**  | `rounded`      |
 
 ---
 
 ## 5. Border & shadow
 
 - Default border: `#e5e5e5` ≈ `border-neutral-200`.
-- Dividers: `border-neutral-200/80` or `#e6e6e6` / `#eee` as already used in catalog rows.
+- Dividers: `border-neutral-200/80` or `#e6e6e6` / `#eee`.
 
 **Card shadow** (modals, dropdowns, elevated panels only):
 
@@ -157,7 +157,7 @@ Solid `#ffffff`, hairline `border-neutral-200` where panes meet. No blur, no tra
 
 ### Content pane (default)
 
-Solid `#ffffff`, own scroll container (`overflow-y-auto`). This is what the exercises catalog, lesson overlay, and most views use.
+Solid `#ffffff`, own scroll container (`overflow-y-auto`). This is what the lesson overlay and most views use.
 
 ### Card (floating / onboarding)
 

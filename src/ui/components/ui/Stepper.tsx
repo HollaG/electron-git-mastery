@@ -33,6 +33,7 @@ export const Stepper = ({
               className={cx(
                 "flex h-[30px] w-[30px] items-center justify-center rounded-full text-[13px] font-medium",
                 "focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:outline-none",
+                selectable && "hover:cursor-pointer",
                 done && "bg-brand-600 text-white",
                 current && "border-2 border-brand-600 text-brand-700",
                 !done &&

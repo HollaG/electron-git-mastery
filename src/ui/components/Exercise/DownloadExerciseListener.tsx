@@ -5,11 +5,6 @@ import { useToast } from "../../contexts/ToastContext";
 import { useLocalExercises } from "../../hooks/query/useLocalExercises";
 import { useExercises } from "../../hooks/query/useExercises";
 import { useActivity } from "../../contexts/ActivityContext";
-import { useAppView } from "../../contexts/AppViewContext";
-import {
-  buildExerciseUrl,
-  useWebContentsView,
-} from "../../contexts/WebContentsViewContext";
 import type { Exercise } from "../../../types/Exercise";
 
 const isDownloadCommand = (cmd: string) => cmd.startsWith("download");
@@ -20,11 +15,9 @@ const isDownloadCommand = (cmd: string) => cmd.startsWith("download");
  * starts from the embedded lesson page.
  */
 export const DownloadExerciseListener = () => {
-  const { rescanDownloadedExercises } = useLocalExercises();
+  const { downloadedExerciseData, patchExerciseStatus } = useLocalExercises();
   const { query: exercisesQuery } = useExercises();
   const { startExercise } = useActivity();
-  const { navigate } = useWebContentsView();
-  const { setView } = useAppView();
   const { showToast, updateToast } = useToast();
   // Presence of a command means its notification is already on screen; the
   // value is the tail of its output shown in that notification.
@@ -76,8 +69,10 @@ export const DownloadExerciseListener = () => {
 
   const onExerciseDownloadComplete = useCallback(
     (originalCommand: string, data: GitMasteryTaskData) => {
-      console.log("[info] download completed, refetching downloaded exercises");
-      rescanDownloadedExercises();
+      const exerciseIdentifier = data.exerciseIdentifier;
+      if (exerciseIdentifier && !downloadedExerciseData?.[exerciseIdentifier]) {
+        patchExerciseStatus(exerciseIdentifier, "downloaded");
+      }
 
       updateToast(originalCommand, {
         title: "Download complete",
@@ -94,8 +89,6 @@ export const DownloadExerciseListener = () => {
 
       if (selectedExercise) {
         startExercise(selectedExercise);
-        setView("exercises");
-        navigate(buildExerciseUrl(selectedExercise));
       }
 
       if (
@@ -106,10 +99,9 @@ export const DownloadExerciseListener = () => {
       progressRef.current.delete(originalCommand);
     },
     [
-      navigate,
+      downloadedExerciseData,
+      patchExerciseStatus,
       resolveExercise,
-      rescanDownloadedExercises,
-      setView,
       startExercise,
       updateToast,
     ],

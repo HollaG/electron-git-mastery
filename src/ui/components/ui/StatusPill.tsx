@@ -1,38 +1,29 @@
 import { cx } from "../../utils/cx";
 
-export type StatusTone = "neutral" | "success" | "danger" | "warning" | "info";
-
-const TONES: Record<StatusTone, string> = {
-  neutral: "border-neutral-200 bg-neutral-100 text-neutral-600",
-  success: "border-brand-200 bg-brand-50 text-brand-700",
-  danger: "border-[#fecdca] bg-[#fef3f2] text-[#b42318]",
-  warning: "border-[#fedf89] bg-[#fffaeb] text-[#b54708]",
-  info: "border-[#bae6fd] bg-[#f0f9ff] text-[#0369a1]",
+const TONE_CLASSES: Record<ProgressState, string> = {
+  downloaded: "border-neutral-200 bg-neutral-100 text-neutral-600",
+  "in-progress": "border-amber-200 bg-amber-50 text-amber-700",
+  completed: "border-brand-200 bg-brand-50 text-brand-700",
 };
 
-/**
- * Semantic state chip. The label is always visible text, so colour is never the
- * only signal.
- */
-export const StatusPill = ({
-  tone = "neutral",
-  children,
-  title,
-  className,
-}: {
-  tone?: StatusTone;
-  children: string;
-  title?: string;
-  className?: string;
-}) => (
-  <span
-    title={title ?? children}
-    className={cx(
-      "inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
-      TONES[tone],
-      className,
-    )}
-  >
-    {children}
-  </span>
-);
+const STATUS_LABELS: Record<ProgressState, string> = {
+  downloaded: "Downloaded",
+  "in-progress": "In progress",
+  completed: "Completed",
+};
+
+export const StatusPill = ({ status }: { status: ProgressState }) => {
+  const label = STATUS_LABELS[status];
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      className={cx(
+        "inline-flex shrink-0 items-center rounded border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
+        TONE_CLASSES[status],
+      )}
+    >
+      {label}
+    </span>
+  );
+};

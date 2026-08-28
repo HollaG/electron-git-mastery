@@ -3,48 +3,18 @@ import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 import { ipcMainHandle } from "../utils/util.js";
-import { getConfig, getUserStoragePath } from "../storage.js";
+import { getConfig } from "../storage.js";
 import { logGM } from "../utils/logger.js";
 import {
   getEnvironmentWithHomebrew,
   getExerciseDirectory,
   getGitMasteryExecutable,
 } from "../utils/cli/getters.js";
+import { patchExerciseProgress } from "../exerciseProgress.js";
 import { getCwd, runCommandInPty } from "./terminal.js";
 import { sendToRenderer } from "./ipcUtils.js";
 
 const GM_TASK_DATA_CHANNEL = "gitmastery-task-data" as const;
-
-// -----------------------
-// Setup for storing and reading local exercise progress state
-// Needed so we can display the progress in the UI
-// -----------------------
-const FILE_NAME = "progressData.json";
-
-let progressData: ProgressData = {};
-
-const writeToFile = (
-  exerciseIdentifier: string,
-  updateFn: (data: ExerciseProgress) => ExerciseProgress,
-) => {
-  const currentProgress = progressData[exerciseIdentifier] || {
-    status: "not-started",
-  };
-
-  const newProgress = updateFn(currentProgress);
-
-  progressData[exerciseIdentifier] = newProgress;
-
-  // update the file
-  const dir = getUserStoragePath();
-  const filePath = path.join(dir, FILE_NAME);
-
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  fs.writeFileSync(filePath, JSON.stringify(progressData, null, 2), "utf8");
-};
 
 // -----------------------
 // The below handles the functions for GitMastery invocation
@@ -317,11 +287,7 @@ export const _download = (
         data: taskPayload,
       });
 
-      // update the file
-      writeToFile(exerciseIdentifier, (data) => ({
-        ...data,
-        status: "in-progress",
-      }));
+      patchExerciseProgress(exerciseIdentifier, "downloaded");
     } else {
       // Failure
       const taskPayload: GitMasteryTaskData = {
@@ -441,11 +407,10 @@ export const _verify = (
         data: taskPayload,
       });
 
-      // write the sucess or failure to a file
-      writeToFile(exerciseIdentifier, (data) => ({
-        ...data,
-        status: correct ? "correct" : "incorrect",
-      }));
+      patchExerciseProgress(
+        exerciseIdentifier,
+        correct ? "completed" : "in-progress",
+      );
     } else {
       // Failure
 
@@ -554,26 +519,6 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
       return { ok: true, cwd };
     },
   );
-
-  const dir = getUserStoragePath();
-  const filePath = path.join(dir, FILE_NAME);
-
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify({}));
-  }
-
-  // read from filePath and update`progressData`
-  // TODO: add validation
-  const rawData = fs.readFileSync(filePath, "utf8");
-  try {
-    progressData = JSON.parse(rawData);
-  } catch (err) {
-    console.error("[error] failed to parse progress data: ", err);
-  }
 }
 
 // Checks for the line `INFO  Status: Incomplete`
