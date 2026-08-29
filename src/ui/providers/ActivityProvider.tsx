@@ -11,7 +11,7 @@
 // here is therefore keyed off the exercise identifier in the stream payload
 // rather than off the current activity.
 
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import type { Exercise } from "../../types/Exercise";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useElectronStream } from "../hooks/useElectronStream";
@@ -44,29 +44,8 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   /** Verify notifications currently on screen, keyed by notification id. */
   const openVerifyNotifications = useRef<Set<string>>(new Set());
 
-  /**
-   * Moves the terminal into the exercise's working directory. Verification runs
-   * in whatever directory the terminal is in, so a failure here has to be
-   * surfaced rather than swallowed.
-   */
-  const enterExerciseDirectory = async (exercise: Exercise) => {
-    const result = await window.electron.startExercise(exercise.identifier);
-    if (result.ok) return;
-
-    showToast({
-      title: "Could not open the exercise folder",
-      message:
-        result.error ??
-        "Try downloading the exercise again from the exercises list.",
-      tone: "danger",
-      icon: <IconInfoCircle size={18} className="text-[#b42318]" />,
-      autoClose: 8000,
-    });
-  };
-
-  const startExercise = (exercise: Exercise) => {
-    void enterExerciseDirectory(exercise);
-
+  /** First-run explainer for the exercise workflow. */
+  const showExerciseOnboarding = () => {
     if (showOnboardingExercise) {
       const modalId = openModal({
         title: "Exercise",
@@ -99,6 +78,47 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       });
     }
   };
+
+  const startExercise = (exercise: Exercise) => {
+    void window.electron.startExercise(exercise.identifier);
+  };
+
+  /**
+   * The main process reports every start, whether it came from the app or from
+   * the button injected into the embedded lesson page, once the terminal is in
+   * the exercise directory. Verification runs in whatever directory the terminal
+   * is in, so a failure here has to be surfaced rather than swallowed.
+   */
+  const onStartExerciseResult = (result: StartExerciseResult) => {
+    if (result.ok) {
+      showExerciseOnboarding();
+      return;
+    }
+
+    showToast({
+      title: "Could not open the exercise folder",
+      message: result.needsRestart
+        ? `${result.error} Delete that folder and start the exercise again for a clean copy.`
+        : (result.error ??
+          "Try downloading the exercise again from the exercises list."),
+      tone: "danger",
+      icon: <IconInfoCircle size={18} className="text-[#b42318]" />,
+      autoClose: 8000,
+    });
+  };
+
+  // Freshly created each render, so it is read through a ref to subscribe once.
+  const onStartExerciseResultRef = useRef(onStartExerciseResult);
+  useEffect(() => {
+    onStartExerciseResultRef.current = onStartExerciseResult;
+  });
+  useEffect(
+    () =>
+      window.electron.onStartExerciseResult((result) =>
+        onStartExerciseResultRef.current(result),
+      ),
+    [],
+  );
 
   /**
    * Closes off a verify notification, creating it first if the run finished

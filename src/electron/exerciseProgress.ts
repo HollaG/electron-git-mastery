@@ -47,7 +47,8 @@ function computeExerciseProgress(): ProgressData {
     .filter((file) => {
       return fs.statSync(path.join(exerciseDirectory, file)).isDirectory();
     })
-    .filter((exercise) => exercise !== "progress");
+    // `progress` and `.gitmastery` hold CLI metadata, not exercises.
+    .filter((exercise) => exercise !== "progress" && !exercise.startsWith("."));
 
   const cliStatusByName = readCliProgress(exerciseDirectory);
   const downloaded: ProgressData = {};
