@@ -32,11 +32,25 @@ export const EXERCISE_MANIFEST_NAME = ".gitmastery-exercise.json";
 const HANDS_ON_PREFIX = "hp-";
 
 /**
- * `repo_name` is read off disk and then joined onto the exercise root, so it has
- * to stay a single path segment.
+ * `repo_name` and the exercise identifier are joined onto a parent path, so
+ * they have to stay a single path segment. Absolute paths and backslashes are
+ * rejected as well: `path.basename` does not treat `\` as a separator on POSIX,
+ * so `C:\foo` would otherwise pass on macOS.
  */
-const isPathSegment = (name: string) =>
-  name !== "." && name !== ".." && path.basename(name) === name;
+export const isPathSegment = (name: string) =>
+  name !== "." &&
+  name !== ".." &&
+  !path.isAbsolute(name) &&
+  !name.includes("\\") &&
+  path.basename(name) === name;
+
+const isDirectory = (p: string): boolean => {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Where the learner should work for a given exercise, or why we cannot say.
@@ -90,8 +104,14 @@ export function readExerciseManifest(
  */
 export function resolveExerciseCwd(exerciseRoot: string): ExerciseCwdResult {
   if (!fs.existsSync(exerciseRoot)) return { state: "not-downloaded" };
+  if (!isDirectory(exerciseRoot)) return { state: "corrupt", exerciseRoot };
 
   if (path.basename(exerciseRoot).startsWith(HANDS_ON_PREFIX)) {
+    // Hands-on practices have no manifest, so an empty leftover from a failed
+    // download is indistinguishable from a successful one except by contents.
+    if (fs.readdirSync(exerciseRoot).length === 0) {
+      return { state: "incomplete", exerciseRoot };
+    }
     return { state: "ready", cwd: exerciseRoot };
   }
 
@@ -104,6 +124,7 @@ export function resolveExerciseCwd(exerciseRoot: string): ExerciseCwdResult {
 
   const cwd = path.join(exerciseRoot, repo_name);
   if (!fs.existsSync(cwd)) return { state: "incomplete", exerciseRoot };
+  if (!isDirectory(cwd)) return { state: "corrupt", exerciseRoot };
 
   return { state: "ready", cwd };
 }

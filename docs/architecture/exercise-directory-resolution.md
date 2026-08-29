@@ -140,22 +140,32 @@ refuses correctly if anything ever does issue it.
 
 ### Resolver
 
-`resolveExerciseCwd(exerciseRoot)` returns a discriminated result. No heuristics:
+Callers reject the exercise identifier unless it is a single path segment (not `.`, `..`,
+absolute, or containing `/` or `\`) **before** `path.join` onto the exercises directory. That
+keeps `../hp-foo` and absolute paths from escaping the exercises root. Verify uses the same
+check and falls back to the terminal cwd rather than joining.
+
+`resolveExerciseCwd(exerciseRoot)` then returns a discriminated result. No heuristics. Paths
+must be directories, not merely exist:
 
 | Condition                                                 | Result                                  |
 | --------------------------------------------------------- | --------------------------------------- |
 | `exerciseRoot` does not exist                             | `{ state: "not-downloaded" }`           |
-| Identifier starts with `hp-` (hands-on practice)          | `{ state: "ready", cwd: exerciseRoot }` |
+| `exerciseRoot` exists but is not a directory              | `{ state: "corrupt", exerciseRoot }`    |
+| Identifier starts with `hp-` and the directory is empty   | `{ state: "incomplete", exerciseRoot }` |
+| Identifier starts with `hp-` and the directory has files  | `{ state: "ready", cwd: exerciseRoot }` |
 | Manifest missing, unparseable, or missing `exercise_repo` | `{ state: "corrupt", exerciseRoot }`    |
 | `repo_type === "ignore"`                                  | `{ state: "ready", cwd: exerciseRoot }` |
 | `repo_name` is not a single path segment                  | `{ state: "corrupt", exerciseRoot }`    |
-| otherwise, `<root>/<repo_name>` exists                    | `{ state: "ready", cwd }`               |
 | otherwise, `<root>/<repo_name>` missing                   | `{ state: "incomplete", exerciseRoot }` |
+| otherwise, `<root>/<repo_name>` exists but is not a dir   | `{ state: "corrupt", exerciseRoot }`    |
+| otherwise, `<root>/<repo_name>` is a directory            | `{ state: "ready", cwd }`               |
 
 Hands-on practices (`gitmastery download hp-<name>`) are set up by a Python `download` function
 rather than from a manifest (`_download_hands_on` in `app/commands/download.py`), so no
 `.gitmastery-exercise.json` is ever written for them and the learner works at the exercise root.
-Without the prefix check they would all resolve as `corrupt`.
+Without the prefix check they would all resolve as `corrupt`. An empty leftover from a failed
+hands-on download is `incomplete` so Start will not silently `cd` into it and skip retry.
 
 `repo_name` is read off disk and joined onto the exercise root, so it is rejected unless it is a
 single path segment — the resolved cwd is `cd`-ed into and used as verify's cwd, and neither
@@ -188,24 +198,31 @@ message instead.
 
 One shared `startExercise(mainWindow, exerciseIdentifier)` in the main process:
 
-1. Resolve.
-2. `ready` → `runCommandInPty('cd "<cwd>"')`, return `{ ok: true, cwd, downloaded: false }`.
-   **Exit early — no download is issued.** This is the fix for both the data loss on v7.8.2 and
-   the spurious error on the newer CLI.
-3. `not-downloaded` → run `_download`; on exit code 0, re-resolve, `cd`, and return
-   `{ ok: true, cwd, downloaded: true }`. On a non-zero exit, return the failure as before.
-4. `corrupt` / `incomplete` → do **not** download. Return
+1. Reject an identifier that is not a single path segment. Do not `path.join`.
+2. Resolve.
+3. `ready` → `changeDirectory(cwd)` if this Start is still the latest, return
+   `{ ok: true, cwd, downloaded: false }`. **Exit early — no download is issued.** This is the
+   fix for both the data loss on v7.8.2 and the spurious error on the newer CLI.
+4. `not-downloaded` → run `_download`; on success, re-resolve, `cd` if still latest, and return
+   `{ ok: true, cwd, downloaded: true }`. On failure, return `{ ok: false }` to the IPC caller
+   but do **not** broadcast `start-exercise-result` — the download task stream already toasted
+   the CLI/spawn error.
+5. `corrupt` / `incomplete` → do **not** download. Return
    `{ ok: false, error, needsRestart: true }`; the renderer tells the learner to clear the
    folder out, since Restart is not built yet (§8).
 
 Starts are deduplicated by identifier while one is in flight, so a second click — or a click on
-both the app-side and embedded buttons — cannot issue two downloads.
+both the app-side and embedded buttons — cannot issue two downloads. A monotonic generation
+ensures only the latest Start may `cd`: starting B while A is still downloading must not let
+A's completion steal the terminal.
 
 The outcome is broadcast on `start-exercise-result` as well as returned, because the embedded
 button dispatches through `wcv-start-exercise` and has no return value to inspect. The renderer
 drives both the first-run explainer and the error toast off that one signal, so every entry
 point behaves identically and the explainer is shown once per start, after the `cd`, rather than
-once when the button is pressed and again when the download finishes.
+once when the button is pressed and again when the download finishes. Download failures are the
+exception: they are already visible on the task stream, so broadcasting them would stack a
+second, less informative toast.
 
 ### Entry points after the change
 
@@ -253,13 +270,17 @@ subshells, and chained commands). A learner who typed `cd ~` got "You are not in
 Git-Mastery exercise folder."
 
 It now resolves the exercise's own directory from the identifier it is already given, falling
-back to the terminal's cwd only when that cannot be resolved. The CLI is tolerant of where
-inside the exercise it runs: `verify` is decorated `@in_exercise_root()` with `must=False`
-(`app/commands/verify.py`) and `find_root` walks _upward_ (`app/configs/utils.py`).
+back to the terminal's cwd when the identifier is not a path segment or the folder cannot be
+resolved. The CLI is tolerant of where inside the exercise it runs: `verify` is decorated
+`@in_exercise_root()` with `must=False` (`app/commands/verify.py`) and `find_root` walks
+_upward_ (`app/configs/utils.py`).
 
 ## 10. Process spawn failures
 
 `_setup`, `_download` and `_verify` each listen for `'error'` on the child process. A spawn that
-never starts — GitMastery missing from `PATH`, exercise folder gone — emits `'error'` and never
-emits `'close'`; without the listener Node raises it as an uncaught exception in the main
-process, and `_download`'s promise never settles, leaving `startExercise` awaiting forever.
+never starts — GitMastery missing from `PATH`, exercise folder gone — emits `'error'` and then
+usually `'close'` with `code === null`. Without an `error` listener Node raises this as an
+uncaught exception in the main process. `_download` must still settle its promise on both
+events: `close` logs `String(code)` (never `code!`), skips a second `completed` payload if
+`error` already settled, and `settle`s in a `finally` so Start cannot hang with a poisoned
+in-flight map.

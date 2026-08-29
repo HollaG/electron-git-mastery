@@ -11,7 +11,7 @@ import {
   getGitMasteryExecutable,
 } from "../utils/cli/getters.js";
 import { patchExerciseProgress } from "../exerciseProgress.js";
-import { resolveExerciseCwd } from "../exerciseManifest.js";
+import { isPathSegment, resolveExerciseCwd } from "../exerciseManifest.js";
 import { changeDirectory, getCwd } from "./terminal.js";
 import { sendToRenderer } from "./ipcUtils.js";
 
@@ -164,7 +164,7 @@ const _setup = async (mainWindow: BrowserWindow) => {
     });
 
     childProcess.on("close", (code) => {
-      logGM("close", "setup", code!.toString());
+      logGM("close", "setup", String(code));
       if (code === 0) {
         // Success
 
@@ -315,44 +315,46 @@ export const _download = (
   });
 
   childProcess.on("close", (code) => {
-    logGM("close", `download ${exerciseIdentifier}`, code!.toString());
-    if (code === 0) {
-      // Success
+    // Spawn `error` already reported the failure; `close` still fires with
+    // `code === null` and must not send a second completed payload or throw.
+    if (settled) return;
+    try {
+      logGM("close", `download ${exerciseIdentifier}`, String(code));
+      if (code === 0) {
+        const taskPayload: GitMasteryTaskData = {
+          exerciseIdentifier: exerciseIdentifier,
 
-      const taskPayload: GitMasteryTaskData = {
-        exerciseIdentifier: exerciseIdentifier,
+          completed: {
+            status: "success",
+            message: "Download completed successfully",
+          },
+        };
+        sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+          originalCommand: `download ${exerciseIdentifier}`,
+          data: taskPayload,
+        });
 
-        completed: {
-          status: "success",
-          message: "Download completed successfully",
-        },
-      };
-      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-        originalCommand: `download ${exerciseIdentifier}`,
-        data: taskPayload,
-      });
+        patchExerciseProgress(exerciseIdentifier, "downloaded");
+      } else {
+        const taskPayload: GitMasteryTaskData = {
+          exerciseIdentifier: exerciseIdentifier,
 
-      patchExerciseProgress(exerciseIdentifier, "downloaded");
-      settle(true);
-    } else {
-      // Failure
-      const taskPayload: GitMasteryTaskData = {
-        exerciseIdentifier: exerciseIdentifier,
-
-        completed: {
-          status: "failure",
-          message:
-            stderrBuffer ||
-            "Download failed! Please ensure GitMastery is set up properly",
-          stdout: stdoutBuffer,
-          stderr: stderrBuffer,
-        },
-      };
-      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-        originalCommand: `download ${exerciseIdentifier}`,
-        data: taskPayload,
-      });
-      settle(false);
+          completed: {
+            status: "failure",
+            message:
+              stderrBuffer ||
+              "Download failed! Please ensure GitMastery is set up properly",
+            stdout: stdoutBuffer,
+            stderr: stderrBuffer,
+          },
+        };
+        sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+          originalCommand: `download ${exerciseIdentifier}`,
+          data: taskPayload,
+        });
+      }
+    } finally {
+      settle(code === 0);
     }
   });
 
@@ -365,6 +367,7 @@ export const _download = (
  * navigated the terminal.
  */
 const _verifyCwd = (exerciseIdentifier: string): string => {
+  if (!isPathSegment(exerciseIdentifier)) return getCwd();
   try {
     const resolved = resolveExerciseCwd(
       path.join(getExerciseDirectory(), exerciseIdentifier),
@@ -451,7 +454,7 @@ export const _verify = (
   });
 
   childProcess.on("close", (code) => {
-    logGM("close", `verify`, code!.toString());
+    logGM("close", `verify`, String(code));
     if (code === 0) {
       // Success
 
@@ -505,18 +508,35 @@ export const _verify = (
   });
 };
 
+/** Incremented on every Start so a finishing download cannot steal a newer `cd`. */
+let startGeneration = 0;
+
 const _startExercise = async (
   mainWindow: BrowserWindow,
   exerciseIdentifier: string,
 ): Promise<StartExerciseResult> => {
+  const generation = ++startGeneration;
+  const cdIfCurrent = (directory: string) => {
+    if (generation === startGeneration) changeDirectory(directory);
+  };
+
   // The outcome is broadcast as well as returned, so that the button injected
   // into the embedded lesson page, which has no return value to inspect, drives
   // the same onboarding and error handling as the app's own button.
-  const report = (result: StartExerciseResult): StartExerciseResult => {
+  const report = (
+    result: StartExerciseResult,
+    { broadcast = true }: { broadcast?: boolean } = {},
+  ): StartExerciseResult => {
     if (!result.ok) console.warn(`[start-exercise] ${result.error}`);
-    sendToRenderer(mainWindow, START_EXERCISE_RESULT_CHANNEL, result);
+    if (broadcast) {
+      sendToRenderer(mainWindow, START_EXERCISE_RESULT_CHANNEL, result);
+    }
     return result;
   };
+
+  if (!isPathSegment(exerciseIdentifier)) {
+    return report({ ok: false, error: "Invalid exercise identifier." });
+  }
 
   let exerciseRoot: string;
   try {
@@ -529,16 +549,18 @@ const _startExercise = async (
 
   switch (resolved.state) {
     case "ready":
-      changeDirectory(resolved.cwd);
+      cdIfCurrent(resolved.cwd);
       return report({ ok: true, cwd: resolved.cwd, downloaded: false });
 
     case "not-downloaded": {
       const downloaded = await _download(mainWindow, exerciseIdentifier);
       if (!downloaded) {
-        return report({
-          ok: false,
-          error: `Could not download ${exerciseIdentifier}.`,
-        });
+        // The download stream already toasted the CLI/spawn failure; a second
+        // start-exercise-result would stack a generic "could not open folder".
+        return report(
+          { ok: false, error: `Could not download ${exerciseIdentifier}.` },
+          { broadcast: false },
+        );
       }
 
       const afterDownload = resolveExerciseCwd(exerciseRoot);
@@ -550,7 +572,7 @@ const _startExercise = async (
         });
       }
 
-      changeDirectory(afterDownload.cwd);
+      cdIfCurrent(afterDownload.cwd);
       return report({ ok: true, cwd: afterDownload.cwd, downloaded: true });
     }
 
