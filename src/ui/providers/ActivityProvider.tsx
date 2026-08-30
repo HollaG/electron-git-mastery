@@ -159,42 +159,42 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     _originalCommand: string,
     data: GitMasteryTaskData,
   ) => {
-    settleVerifyNotification({
-      id: verifyNotificationId(data),
-      title: "Verification complete.",
-      message: "",
-      loading: false,
-      tone: "success",
-      icon: <IconInfoCircle size={18} className="text-brand-600" />,
-      autoClose: 5000,
-      withCloseButton: true,
-    });
-
     const { comments, incorrect, correct } = (data.completed?.data ?? {}) as {
       correct?: boolean;
       incorrect?: boolean;
       comments?: string;
     };
 
-    if (correct || incorrect) {
-      const modalId = openModal({
-        title: correct
-          ? "Exercise completed successfully!"
-          : "Exercise solution incorrect",
-        size: "sm",
-        children: (
-          <div className="flex flex-col gap-4 text-sm text-[#333]">
-            <p>
-              {correct
-                ? "You successfully completed the exercise!"
-                : "Your solution is not correct yet. Keep going and verify again when you are ready."}
-            </p>
-            {comments && <p className="text-neutral-500">{comments}</p>}
-            <div className="flex justify-end">
-              <Button onClick={() => closeModal(modalId)}>OK</Button>
-            </div>
-          </div>
-        ),
+    const commentLine = comments?.trim() ? `\n${comments.trim()}` : "";
+
+    if (correct) {
+      settleVerifyNotification({
+        id: verifyNotificationId(data),
+        title: "Exercise completed successfully!",
+        message: `You successfully completed the exercise!${commentLine}`,
+        loading: false,
+        tone: "success",
+        autoClose: 5000,
+        withCloseButton: true,
+      });
+    } else if (incorrect) {
+      settleVerifyNotification({
+        id: verifyNotificationId(data),
+        title: "Exercise solution incorrect",
+        message: `Your solution is not correct yet. Keep going and verify again when you are ready.${commentLine}`,
+        loading: false,
+        tone: "danger",
+        withCloseButton: true,
+      });
+    } else {
+      settleVerifyNotification({
+        id: verifyNotificationId(data),
+        title: "Verification complete.",
+        message: "",
+        loading: false,
+        tone: "success",
+        autoClose: 5000,
+        withCloseButton: true,
       });
     }
 
@@ -219,8 +219,6 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       message: data.completed?.message ?? "Please try again",
       loading: false,
       tone: "danger",
-      icon: <IconInfoCircle size={18} className="text-[#b42318]" />,
-      autoClose: 5000,
       withCloseButton: true,
     });
   };
