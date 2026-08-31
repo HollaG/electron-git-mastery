@@ -3,18 +3,18 @@ import logo from "../assets/logo.png";
 import { useEmbeddedSuppressed } from "../hooks/useEmbeddedSuppressed";
 import { FileLocationPanel } from "../components/Setup/FileLocationPanel";
 import { SetupChecklist } from "../components/Setup/SetupChecklist";
+import { AiKeyPanel } from "../components/Setup/AiKeyPanel";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Stepper } from "../components/ui/Stepper";
 import { Tooltip } from "../components/ui/Tooltip";
 
-const STEPS = ["File location", "Setup"];
+const STEPS = ["File location", "Setup", "AI features"];
 
 /**
- * First run only. Walks through the two things that need attention before the
- * app is usable: where exercise files live, then the prerequisite tools. Both
- * panels stay available afterwards from the settings menu, so the second step
- * can be left unfinished.
+ * First run only. Walks through where exercise files live, the prerequisite
+ * tools, then an optional OpenRouter key. All three panels stay available
+ * afterwards from the settings menu, so later steps can be left unfinished.
  */
 export const Onboarding = ({
   onCompleteOnboarding,
@@ -29,6 +29,7 @@ export const Onboarding = ({
   const [step, setStep] = useState(0);
   const [folder, setFolder] = useState<string | null>(null);
   const [toolsReady, setToolsReady] = useState(false);
+  const [aiConfigured, setAiConfigured] = useState(false);
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-gm-bone">
@@ -45,18 +46,15 @@ export const Onboarding = ({
             </h1>
           </div>
 
-          {/* Two steps stretched across the card look lopsided, so the
-              separator is kept short and the pair centred. */}
           <Stepper
-            className="mx-auto w-1/2"
+            className="mx-auto w-3/4"
             active={step}
             steps={STEPS}
             onStepClick={setStep}
           />
 
-          {step === 0 ? (
-            <FileLocationPanel onChange={setFolder} />
-          ) : (
+          {step === 0 && <FileLocationPanel onChange={setFolder} />}
+          {step === 1 && (
             <div className="flex flex-col gap-3">
               <SetupChecklist onReadyChange={setToolsReady} />
               <p className="text-[13px] text-neutral-500">
@@ -65,9 +63,14 @@ export const Onboarding = ({
               </p>
             </div>
           )}
+          {step === 2 && (
+            <div className="flex flex-col gap-3">
+              <AiKeyPanel onConfiguredChange={setAiConfigured} />
+            </div>
+          )}
 
           <div className="flex justify-end">
-            {step === 0 ? (
+            {step === 0 && (
               <Tooltip
                 label="Choose where exercise files should be saved to continue."
                 disabled={Boolean(folder)}
@@ -77,10 +80,20 @@ export const Onboarding = ({
                   Continue
                 </Button>
               </Tooltip>
-            ) : (
+            )}
+            {step === 1 && (
               <Tooltip
                 label="Some required tools were not detected yet. You can come back anytime via Settings to finish installing them."
                 disabled={toolsReady}
+                width={280}
+              >
+                <Button onClick={() => setStep(2)}>Continue</Button>
+              </Tooltip>
+            )}
+            {step === 2 && (
+              <Tooltip
+                label="AI features won't be available until a key is provided. You can add one anytime from Settings."
+                disabled={aiConfigured}
                 width={280}
               >
                 <Button onClick={onCompleteOnboarding}>

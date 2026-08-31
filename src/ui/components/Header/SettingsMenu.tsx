@@ -1,16 +1,23 @@
 import { useState } from "react";
-import { IconChecklist, IconFolder, IconSettings } from "@tabler/icons-react";
+import {
+  IconChecklist,
+  IconFolder,
+  IconSettings,
+  IconSparkles,
+} from "@tabler/icons-react";
 import { FileLocationPanel } from "../Setup/FileLocationPanel";
 import { SetupChecklist } from "../Setup/SetupChecklist";
+import { AiKeyPanel } from "../Setup/AiKeyPanel";
 import { IconButton } from "../ui/IconButton";
 import { Menu, MenuItem, MenuLabel } from "../ui/Menu";
 import { Modal } from "../ui/Modal";
 
-type SettingsPanel = "file-location" | "setup";
+type SettingsPanel = "file-location" | "setup" | "ai";
 
 const PANEL_TITLES: Record<SettingsPanel, string> = {
   "file-location": "Configure file location",
-  setup: "Setup",
+  setup: "Setup dependencies",
+  ai: "Set up AI features",
 };
 
 export const SettingsMenu = () => {
@@ -39,11 +46,13 @@ export const SettingsMenu = () => {
         >
           {PANEL_TITLES.setup}
         </MenuItem>
+        <MenuItem
+          icon={<IconSparkles size={14} />}
+          onClick={() => setPanel("ai")}
+        >
+          {PANEL_TITLES.ai}
+        </MenuItem>
       </Menu>
-
-      {/* The panels are rendered here rather than through the imperative modal
-          stack, so panels that read app context (SetupChecklist listens to the
-          task stream) stay inside the providers they depend on. */}
       <Modal
         opened={opened}
         onClose={() => setPanel(null)}
@@ -52,6 +61,7 @@ export const SettingsMenu = () => {
       >
         {panel === "file-location" && <FileLocationPanel />}
         {panel === "setup" && <SetupChecklist />}
+        {panel === "ai" && <AiKeyPanel />}
       </Modal>
     </>
   );

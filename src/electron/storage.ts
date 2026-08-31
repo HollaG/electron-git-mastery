@@ -6,6 +6,10 @@ interface Config {
   // exeLocation?: string;
   // This is where the exercises are downloaded to. The exercises themselves live under ${dataDirectory}/gitmastery-exercises/
   dataDirectory?: string;
+  /** OpenRouter API key encrypted with Electron safeStorage, as base64. */
+  openRouterApiKeyEnc?: string;
+  /** Plaintext fallback when safeStorage encryption is unavailable. */
+  openRouterApiKeyPlain?: string;
 }
 
 const appBasePath = app.getPath("userData");

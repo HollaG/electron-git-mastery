@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
+/* Streamdown's utility classes live in its shipped JS, which Tailwind does not
+   scan by default. Without these its code blocks render unstyled. */
+@source "../../node_modules/streamdown/dist/*.js";
+@source "../../node_modules/@streamdown/code/dist/*.js";
+
 @theme {
   --font-body: "Inter", system-ui, sans-serif;
   --font-heading: "Noto Serif", Georgia, serif;
+
+  --animate-gm-typing: gm-typing 1.1s ease-in-out infinite;
 
   --color-brand-50: #f2faf5;
   --color-brand-100: #e1f4e8;
@@ -23,6 +30,31 @@
   --shadow-card: 0 1px 2px rgb(23 23 23 / 0.04), 0 1px 3px rgb(23 23 23 / 0.06);
 }
 
+/* Streamdown renders the assistant's markdown and addresses color through
+   these five semantic names. Bound to the house palette so its code blocks and
+   rules inherit the neutral ramp and brand green rather than a second theme.
+   Not a general shadcn layer — only what `rg` finds in streamdown's dist. */
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #333333;
+  --color-muted: var(--color-neutral-100);
+  --color-primary: var(--color-brand-600);
+  --color-border: var(--color-neutral-200);
+}
+
+@keyframes gm-typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
 :root {
   /* Width of the terminal aside. Written by both App state and ResizeHandle
      drags, so the native web view can track the pane without a React render. */
@@ -41,4 +73,12 @@ body {
   background: var(--color-gm-bone);
   color: #333333;
   -webkit-font-smoothing: antialiased;
+}
+
+html.gm-chat-overlay,
+html.gm-chat-overlay body,
+html.gm-chat-overlay #root {
+  background: transparent;
+  overflow: hidden;
+  height: 100%;
 }
