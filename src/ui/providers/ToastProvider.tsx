@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { IconX } from "@tabler/icons-react";
+import { IconCheck, IconX } from "@tabler/icons-react";
 import { IconButton } from "../components/ui/IconButton";
 import { Spinner } from "../components/ui/Spinner";
 import { cx } from "../utils/cx";
@@ -23,6 +23,11 @@ const ACCENTS: Record<ToastTone, string> = {
   danger: "border-l-[#b42318]",
   warning: "border-l-[#b54708]",
   info: "border-l-[#0369a1]",
+};
+
+const DEFAULT_ICONS: Partial<Record<ToastTone, ReactNode>> = {
+  success: <IconCheck size={18} className="text-brand-600" />,
+  danger: <IconX size={18} className="text-[#b42318]" />,
 };
 
 const DEFAULT_AUTO_CLOSE = 4000;
@@ -145,45 +150,46 @@ const ToastViewport = ({
 
   return (
     <div className="pointer-events-none fixed top-[76px] right-4 z-[350] flex w-[min(320px,var(--gm-aside-width))] flex-col gap-2">
-      {toasts.map((toast) => (
-        <div
-          key={toast.id}
-          role="status"
-          className={cx(
-            "pointer-events-auto flex items-start gap-2 rounded-xl border border-neutral-200 border-l-4 bg-white p-3 shadow-card",
-            ACCENTS[toast.tone ?? "neutral"],
-          )}
-        >
-          {toast.loading ? (
-            <Spinner size={16} className="mt-0.5" />
-          ) : (
-            toast.icon && (
-              <span className="mt-0.5 flex shrink-0">{toast.icon}</span>
-            )
-          )}
-          <div className="min-w-0 flex-1">
-            {toast.title && (
-              <p className="text-[13px] font-medium text-[#333]">
-                {toast.title}
-              </p>
+      {toasts.map((toast) => {
+        const icon = toast.icon ?? DEFAULT_ICONS[toast.tone ?? "neutral"];
+        return (
+          <div
+            key={toast.id}
+            role="status"
+            className={cx(
+              "pointer-events-auto flex items-start gap-2 rounded-xl border border-neutral-200 border-l-4 bg-white p-3 shadow-card",
+              ACCENTS[toast.tone ?? "neutral"],
             )}
-            {toast.message && (
-              <p className="text-[13px] break-words whitespace-pre-line text-neutral-500">
-                {toast.message}
-              </p>
+          >
+            {toast.loading ? (
+              <Spinner size={16} className="mt-0.5" />
+            ) : (
+              icon && <span className="mt-0.5 flex shrink-0">{icon}</span>
+            )}
+            <div className="min-w-0 flex-1">
+              {toast.title && (
+                <p className="text-[13px] font-medium text-[#333]">
+                  {toast.title}
+                </p>
+              )}
+              {toast.message && (
+                <p className="text-[13px] break-words whitespace-pre-line text-neutral-500">
+                  {toast.message}
+                </p>
+              )}
+            </div>
+            {(toast.withCloseButton ?? true) && (
+              <IconButton
+                aria-label="Dismiss"
+                size="sm"
+                onClick={() => onDismiss(toast.id)}
+              >
+                <IconX size={14} />
+              </IconButton>
             )}
           </div>
-          {(toast.withCloseButton ?? true) && (
-            <IconButton
-              aria-label="Dismiss"
-              size="sm"
-              onClick={() => onDismiss(toast.id)}
-            >
-              <IconX size={14} />
-            </IconButton>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

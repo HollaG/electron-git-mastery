@@ -11,10 +11,12 @@ import {
   getGitMasteryExecutable,
 } from "../utils/cli/getters.js";
 import { patchExerciseProgress } from "../exerciseProgress.js";
-import { getCwd, runCommandInPty } from "./terminal.js";
+import { isPathSegment, resolveExerciseCwd } from "../exerciseManifest.js";
+import { changeDirectory, getCwd } from "./terminal.js";
 import { sendToRenderer } from "./ipcUtils.js";
 
 const GM_TASK_DATA_CHANNEL = "gitmastery-task-data" as const;
+const START_EXERCISE_RESULT_CHANNEL = "start-exercise-result" as const;
 
 // -----------------------
 // The below handles the functions for GitMastery invocation
@@ -32,6 +34,31 @@ const _spawnChildProcess = ({
   return spawn(getGitMasteryExecutable(), args, {
     cwd,
     env: getEnvironmentWithHomebrew(),
+  });
+};
+
+/**
+ * Reports a process that never started (GitMastery missing from PATH, exercise
+ * folder gone) as a task failure. Without an `error` listener Node throws this
+ * as an uncaught exception and `close` never fires.
+ */
+const _reportSpawnFailure = (
+  mainWindow: BrowserWindow,
+  originalCommand: string,
+  exerciseIdentifier: string | undefined,
+  err: Error,
+) => {
+  logGM("close", originalCommand, err.message);
+  const taskPayload: GitMasteryTaskData = {
+    exerciseIdentifier,
+    completed: {
+      status: "failure",
+      message: `Could not run GitMastery: ${err.message}`,
+    },
+  };
+  sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+    originalCommand,
+    data: taskPayload,
   });
 };
 
@@ -132,8 +159,12 @@ const _setup = async (mainWindow: BrowserWindow) => {
       });
     });
 
+    childProcess.on("error", (err) => {
+      _reportSpawnFailure(mainWindow, "setup", undefined, err);
+    });
+
     childProcess.on("close", (code) => {
-      logGM("close", "setup", code!.toString());
+      logGM("close", "setup", String(code));
       if (code === 0) {
         // Success
 
@@ -185,10 +216,29 @@ const _setup = async (mainWindow: BrowserWindow) => {
   return;
 };
 
+/**
+ * Runs `gitmastery download <exercise>`, streaming progress to the renderer.
+ * Resolves true once the CLI exits successfully, so callers can chain work —
+ * `startExercise` uses this to cd in once the files are actually on disk.
+ *
+ * Callers must not invoke this for an exercise that already exists on disk. See
+ * startExercise, and docs/architecture/exercise-directory-resolution.md.
+ */
 export const _download = (
   mainWindow: BrowserWindow,
   exerciseIdentifier: string,
-) => {
+): Promise<boolean> => {
+  let resolveFinished: (ok: boolean) => void = () => {};
+  const finished = new Promise<boolean>((resolve) => {
+    resolveFinished = resolve;
+  });
+  let settled = false;
+  const settle = (ok: boolean) => {
+    if (settled) return;
+    settled = true;
+    resolveFinished(ok);
+  };
+
   const childProcess = _spawnChildProcess({
     args: ["download", exerciseIdentifier],
   });
@@ -233,21 +283,6 @@ export const _download = (
       originalCommand: `download ${exerciseIdentifier}`,
       data: taskPayload,
     });
-
-    // if (data.toString().includes("INFO  cd")) {
-    //   // get the `cd` portion
-    //   const cdLine = data.toString().split("INFO  cd")[1].trim();
-
-    //   const fullPath = path.join(getExerciseDirectory(), ...cdLine.split("/"));
-
-    //   console.log(`[info - electron] automatically cd-ing to: ${fullPath}`)
-
-    //   writeToPty(`cd "${fullPath}"\r`);
-    //   writeToFile(exerciseIdentifier, (prev) => ({
-    //     ...prev,
-    //     cdPath: fullPath, // THis may lead to issues where users change their file structure...
-    //   }))
-    // }
   });
 
   childProcess.stderr.on("data", (data) => {
@@ -269,52 +304,89 @@ export const _download = (
     });
   });
 
+  childProcess.on("error", (err) => {
+    _reportSpawnFailure(
+      mainWindow,
+      `download ${exerciseIdentifier}`,
+      exerciseIdentifier,
+      err,
+    );
+    settle(false);
+  });
+
   childProcess.on("close", (code) => {
-    logGM("close", `download ${exerciseIdentifier}`, code!.toString());
-    if (code === 0) {
-      // Success
+    // Spawn `error` already reported the failure; `close` still fires with
+    // `code === null` and must not send a second completed payload or throw.
+    if (settled) return;
+    try {
+      logGM("close", `download ${exerciseIdentifier}`, String(code));
+      if (code === 0) {
+        const taskPayload: GitMasteryTaskData = {
+          exerciseIdentifier: exerciseIdentifier,
 
-      const taskPayload: GitMasteryTaskData = {
-        exerciseIdentifier: exerciseIdentifier,
+          completed: {
+            status: "success",
+            message: "Download completed successfully",
+          },
+        };
+        sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+          originalCommand: `download ${exerciseIdentifier}`,
+          data: taskPayload,
+        });
 
-        completed: {
-          status: "success",
-          message: "Download completed successfully",
-        },
-      };
-      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-        originalCommand: `download ${exerciseIdentifier}`,
-        data: taskPayload,
-      });
+        patchExerciseProgress(exerciseIdentifier, "downloaded");
+      } else {
+        const taskPayload: GitMasteryTaskData = {
+          exerciseIdentifier: exerciseIdentifier,
 
-      patchExerciseProgress(exerciseIdentifier, "downloaded");
-    } else {
-      // Failure
-      const taskPayload: GitMasteryTaskData = {
-        exerciseIdentifier: exerciseIdentifier,
-
-        completed: {
-          status: "failure",
-          message:
-            stderrBuffer ||
-            "Download failed! Please ensure GitMastery is set up properly",
-          stdout: stdoutBuffer,
-          stderr: stderrBuffer,
-        },
-      };
-      sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
-        originalCommand: `download ${exerciseIdentifier}`,
-        data: taskPayload,
-      });
+          completed: {
+            status: "failure",
+            message:
+              stderrBuffer ||
+              "Download failed! Please ensure GitMastery is set up properly",
+            stdout: stdoutBuffer,
+            stderr: stderrBuffer,
+          },
+        };
+        sendToRenderer(mainWindow, GM_TASK_DATA_CHANNEL, {
+          originalCommand: `download ${exerciseIdentifier}`,
+          data: taskPayload,
+        });
+      }
+    } finally {
+      settle(code === 0);
     }
   });
+
+  return finished;
+};
+
+/**
+ * Verify runs relative to its cwd, so it uses the exercise's own working
+ * directory when it can be resolved, rather than wherever the learner has since
+ * navigated the terminal.
+ */
+const _verifyCwd = (exerciseIdentifier: string): string => {
+  if (!isPathSegment(exerciseIdentifier)) return getCwd();
+  try {
+    const resolved = resolveExerciseCwd(
+      path.join(getExerciseDirectory(), exerciseIdentifier),
+    );
+    if (resolved.state === "ready") return resolved.cwd;
+  } catch {
+    // No configured exercise directory; fall back to the terminal's cwd.
+  }
+  return getCwd();
 };
 
 export const _verify = (
   mainWindow: BrowserWindow,
   exerciseIdentifier: string,
 ) => {
-  const childProcess = _spawnChildProcess({ args: ["verify"], cwd: getCwd() });
+  const childProcess = _spawnChildProcess({
+    args: ["verify"],
+    cwd: _verifyCwd(exerciseIdentifier),
+  });
   const taskPayload: GitMasteryTaskData = {
     exerciseIdentifier: exerciseIdentifier,
     success: {
@@ -377,8 +449,12 @@ export const _verify = (
     });
   });
 
+  childProcess.on("error", (err) => {
+    _reportSpawnFailure(mainWindow, "verify", exerciseIdentifier, err);
+  });
+
   childProcess.on("close", (code) => {
-    logGM("close", `verify`, code!.toString());
+    logGM("close", `verify`, String(code));
     if (code === 0) {
       // Success
 
@@ -432,35 +508,117 @@ export const _verify = (
   });
 };
 
-// Resolves the directory the user should work in for a given exercise.
-// Handles both flat layouts (files at the exercise root, e.g. fork-repo) and
-// nested layouts (a single cloned repo subfolder). Recomputed from disk on
-// every Start, so it self-heals if the user moves folders. Never throws;
-// returns null only when the exercise has not been downloaded.
-const resolveExerciseCwd = (exerciseRoot: string): string | null => {
-  if (!fs.existsSync(exerciseRoot)) return null;
+/** Incremented on every Start so a finishing download cannot steal a newer `cd`. */
+let startGeneration = 0;
 
-  const isRepo = (p: string) => fs.existsSync(path.join(p, ".git"));
-  if (isRepo(exerciseRoot)) return exerciseRoot; // flat git repo at the root
+const _startExercise = async (
+  mainWindow: BrowserWindow,
+  exerciseIdentifier: string,
+): Promise<StartExerciseResult> => {
+  const generation = ++startGeneration;
+  const cdIfCurrent = (directory: string) => {
+    if (generation === startGeneration) changeDirectory(directory);
+  };
 
-  const subdirs = fs
-    .readdirSync(exerciseRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
-    .map((entry) => entry.name);
+  // The outcome is broadcast as well as returned, so that the button injected
+  // into the embedded lesson page, which has no return value to inspect, drives
+  // the same onboarding and error handling as the app's own button.
+  const report = (
+    result: StartExerciseResult,
+    { broadcast = true }: { broadcast?: boolean } = {},
+  ): StartExerciseResult => {
+    if (!result.ok) console.warn(`[start-exercise] ${result.error}`);
+    if (broadcast) {
+      sendToRenderer(mainWindow, START_EXERCISE_RESULT_CHANNEL, result);
+    }
+    return result;
+  };
 
-  if (subdirs.length === 0) return exerciseRoot; // flat layout, no repo
-  if (subdirs.length === 1) return path.join(exerciseRoot, subdirs[0]); // nested clone
+  if (!isPathSegment(exerciseIdentifier)) {
+    return report({ ok: false, error: "Invalid exercise identifier." });
+  }
 
-  // Ambiguous: prefer an actual repo, then the conventional `<id>-repo` name,
-  // and only as a last resort fall back to the exercise root itself.
-  const repoSubdir = subdirs.find((dir) =>
-    isRepo(path.join(exerciseRoot, dir)),
+  let exerciseRoot: string;
+  try {
+    exerciseRoot = path.join(getExerciseDirectory(), exerciseIdentifier);
+  } catch (err) {
+    return report({ ok: false, error: (err as Error).message });
+  }
+
+  const resolved = resolveExerciseCwd(exerciseRoot);
+
+  switch (resolved.state) {
+    case "ready":
+      cdIfCurrent(resolved.cwd);
+      return report({ ok: true, cwd: resolved.cwd, downloaded: false });
+
+    case "not-downloaded": {
+      const downloaded = await _download(mainWindow, exerciseIdentifier);
+      if (!downloaded) {
+        // The download stream already toasted the CLI/spawn failure; a second
+        // start-exercise-result would stack a generic "could not open folder".
+        return report(
+          { ok: false, error: `Could not download ${exerciseIdentifier}.` },
+          { broadcast: false },
+        );
+      }
+
+      const afterDownload = resolveExerciseCwd(exerciseRoot);
+      if (afterDownload.state !== "ready") {
+        return report({
+          ok: false,
+          error: `Downloaded ${exerciseIdentifier}, but could not find its folder.`,
+          needsRestart: true,
+        });
+      }
+
+      cdIfCurrent(afterDownload.cwd);
+      return report({ ok: true, cwd: afterDownload.cwd, downloaded: true });
+    }
+
+    // Something is on disk but unusable. Downloading over it would destroy
+    // whatever the learner has in there, so make them choose to restart.
+    case "corrupt":
+    case "incomplete":
+      return report({
+        ok: false,
+        error:
+          resolved.state === "corrupt"
+            ? `The folder at ${resolved.exerciseRoot} is not a valid exercise.`
+            : `The exercise at ${resolved.exerciseRoot} did not finish downloading.`,
+        needsRestart: true,
+      });
+  }
+};
+
+/** Starts in flight, so that a second click does not download a second time. */
+const startingExercises = new Map<string, Promise<StartExerciseResult>>();
+
+/**
+ * Puts the learner into an exercise, downloading it first only if it is not
+ * already on disk.
+ *
+ * The existence check is the point. `gitmastery download` is destructive on
+ * older CLIs (it deletes the folder and any work in it) and a hard error on
+ * newer ones, so "Start" must never issue a download for an exercise the
+ * learner has already begun. Resolving locally also makes resuming instant —
+ * every CLI invocation costs seconds, since it checks for a newer release
+ * before running any subcommand.
+ *
+ * See docs/architecture/exercise-directory-resolution.md.
+ */
+export const startExercise = (
+  mainWindow: BrowserWindow,
+  exerciseIdentifier: string,
+): Promise<StartExerciseResult> => {
+  const inFlight = startingExercises.get(exerciseIdentifier);
+  if (inFlight) return inFlight;
+
+  const started = _startExercise(mainWindow, exerciseIdentifier).finally(() =>
+    startingExercises.delete(exerciseIdentifier),
   );
-  const namedSubdir = subdirs.find(
-    (dir) => dir === `${path.basename(exerciseRoot)}-repo`,
-  );
-  const chosen = repoSubdir ?? namedSubdir;
-  return chosen ? path.join(exerciseRoot, chosen) : exerciseRoot;
+  startingExercises.set(exerciseIdentifier, started);
+  return started;
 };
 
 // Handles backend gitmastery ipc events
@@ -484,7 +642,9 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
           await _setup(mainWindow);
           break;
         case "download":
-          _download(mainWindow, commandArgs.join(" "));
+          // Routed through startExercise so this path keeps the guard against
+          // downloading over an exercise that already exists.
+          void startExercise(mainWindow, commandArgs.join(" "));
           break;
         case "verify":
           _verify(mainWindow, commandArgs.join(" "));
@@ -500,24 +660,8 @@ export function setupGitmasteryIpc(mainWindow: BrowserWindow) {
   // Command 2: `start` an exercise manually (this function helps the user CD into an exercise)
   ipcMainHandle(
     "gitmastery-start-exercise",
-    async ({ exerciseIdentifier }: { exerciseIdentifier: string }) => {
-      let exerciseRoot: string;
-      try {
-        exerciseRoot = path.join(getExerciseDirectory(), exerciseIdentifier);
-      } catch (err) {
-        return { ok: false, error: (err as Error).message };
-      }
-
-      const cwd = resolveExerciseCwd(exerciseRoot);
-      if (!cwd) {
-        const error = `No exercise directory found at ${exerciseRoot}`;
-        console.warn(`[start-exercise] ${error}`);
-        return { ok: false, error };
-      }
-
-      runCommandInPty(`cd "${cwd}"`);
-      return { ok: true, cwd };
-    },
+    async ({ exerciseIdentifier }: { exerciseIdentifier: string }) =>
+      startExercise(mainWindow, exerciseIdentifier),
   );
 }
 

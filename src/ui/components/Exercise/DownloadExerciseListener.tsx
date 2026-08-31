@@ -3,38 +3,21 @@ import { IconCheck, IconX } from "@tabler/icons-react";
 import { useElectronStream } from "../../hooks/useElectronStream";
 import { useToast } from "../../contexts/ToastContext";
 import { useLocalExercises } from "../../hooks/query/useLocalExercises";
-import { useExercises } from "../../hooks/query/useExercises";
-import { useActivity } from "../../contexts/ActivityContext";
-import type { Exercise } from "../../../types/Exercise";
 
 const isDownloadCommand = (cmd: string) => cmd.startsWith("download");
 
 /**
- * Globally mounted listener for exercise download streams.
- * Keeps progress notifications and history refresh working whether a download
- * starts from the embedded lesson page.
+ * Globally mounted listener for exercise download streams. Keeps progress
+ * notifications and history refresh working wherever a download starts from.
+ * Entering the exercise directory is handled by the main process, which reports
+ * it separately on `start-exercise-result`.
  */
 export const DownloadExerciseListener = () => {
   const { downloadedExerciseData, patchExerciseStatus } = useLocalExercises();
-  const { query: exercisesQuery } = useExercises();
-  const { startExercise } = useActivity();
   const { showToast, updateToast } = useToast();
   // Presence of a command means its notification is already on screen; the
   // value is the tail of its output shown in that notification.
   const progressRef = useRef<Map<string, string[]>>(new Map());
-  const selectedExerciseRef = useRef<Exercise | null>(null);
-
-  const resolveExercise = useCallback(
-    (exerciseIdentifier: string | undefined) => {
-      if (!exerciseIdentifier) return null;
-      return (
-        Object.values(exercisesQuery.data || {}).find(
-          (exercise) => exercise.identifier === exerciseIdentifier,
-        ) || null
-      );
-    },
-    [exercisesQuery.data],
-  );
 
   const onExerciseDownloadProgress = useCallback(
     (originalCommand: string, data: GitMasteryTaskData) => {
@@ -52,11 +35,6 @@ export const DownloadExerciseListener = () => {
         });
       }
 
-      const exerciseIdentifier = data.exerciseIdentifier;
-      if (exerciseIdentifier && !selectedExerciseRef.current) {
-        selectedExerciseRef.current = resolveExercise(exerciseIdentifier);
-      }
-
       lines.push(data.success!.message);
       if (lines.length > 4) {
         lines.shift();
@@ -64,7 +42,7 @@ export const DownloadExerciseListener = () => {
 
       updateToast(originalCommand, { message: lines.join("\n") });
     },
-    [resolveExercise, showToast, updateToast],
+    [showToast, updateToast],
   );
 
   const onExerciseDownloadComplete = useCallback(
@@ -84,27 +62,9 @@ export const DownloadExerciseListener = () => {
         withCloseButton: true,
       });
 
-      const selectedExercise =
-        resolveExercise(data.exerciseIdentifier) ?? selectedExerciseRef.current;
-
-      if (selectedExercise) {
-        startExercise(selectedExercise);
-      }
-
-      if (
-        selectedExerciseRef.current?.identifier === selectedExercise?.identifier
-      ) {
-        selectedExerciseRef.current = null;
-      }
       progressRef.current.delete(originalCommand);
     },
-    [
-      downloadedExerciseData,
-      patchExerciseStatus,
-      resolveExercise,
-      startExercise,
-      updateToast,
-    ],
+    [downloadedExerciseData, patchExerciseStatus, updateToast],
   );
 
   const onExerciseDownloadFailure = useCallback(
@@ -122,16 +82,9 @@ export const DownloadExerciseListener = () => {
         withCloseButton: true,
       });
 
-      const failedExercise = resolveExercise(data.exerciseIdentifier);
-      if (
-        failedExercise &&
-        selectedExerciseRef.current?.identifier === failedExercise.identifier
-      ) {
-        selectedExerciseRef.current = null;
-      }
       progressRef.current.delete(originalCommand);
     },
-    [resolveExercise, updateToast],
+    [updateToast],
   );
 
   useElectronStream({

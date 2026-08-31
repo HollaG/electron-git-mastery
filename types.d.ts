@@ -44,6 +44,10 @@ interface Window {
     startGitMasteryTask: (command: string) => Promise<boolean>;
     startExercise: (exerciseIdentifier: string) => Promise<StartExerciseResult>;
 
+    onStartExerciseResult: (
+      callback: (result: StartExerciseResult) => void,
+    ) => () => void;
+
     // for opening URLs in the system's default browser
     openExternal: (url: string) => void;
   };
@@ -73,6 +77,7 @@ type IpcHandlerChannelMapping = {
   "set-data-directory": { directory: string };
 
   "gitmastery-task-data": { originalCommand: string; data: GitMasteryTaskData };
+  "start-exercise-result": StartExerciseResult;
 
   // open a URL in the system default browser
   "open-external": { url: string };
@@ -127,6 +132,8 @@ type StartExerciseResult = {
   ok: boolean;
   cwd?: string;
   error?: string;
+  downloaded?: boolean;
+  needsRestart?: boolean;
 };
 
 type GitMasteryTaskData = {

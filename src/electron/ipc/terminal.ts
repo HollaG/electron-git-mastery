@@ -67,6 +67,7 @@ function resolveShell(): string {
 }
 
 let ptyProcess: pty.IPty;
+let isPosixShell = true;
 
 /**
  * Commands issued before the shell exists (e.g. an exercise started while the
@@ -81,6 +82,13 @@ let cwd: string = process.env.HOME || process.env.USERPROFILE || os.homedir();
 export function getCwd(): string {
   console.log(`[debug] cwd of simulated terminal is ${cwd}`);
   return cwd;
+}
+
+/** Quotes a path for the spawned shell. Windows paths cannot contain `"`. */
+function quotePath(directory: string): string {
+  return isPosixShell
+    ? `'${directory.replace(/'/g, "'\\''")}'`
+    : `"${directory}"`;
 }
 
 /**
@@ -114,17 +122,25 @@ export function writeToPty(data: string) {
 }
 
 /**
- * Runs a command in the terminal on the app's behalf. `\x15` clears anything the
- * user has half-typed at the prompt, which would otherwise be prepended to the
- * command. If the shell has not spawned yet the command is replayed on spawn.
+ * Writes a command to the prompt. `\x15` clears anything the user has half-typed,
+ * which would otherwise be prepended to it. If the shell has not spawned yet the
+ * command is replayed on spawn.
  */
-export function runCommandInPty(command: string) {
+function writeCommandToPty(command: string) {
   if (!ptyProcess) {
     pendingCommands.push(command);
     return;
   }
-  updateCwdFromCdCommand(`${command}\r`);
   ptyProcess.write(`\x15${command}\r`);
+}
+
+/**
+ * Moves the terminal into a directory. The path is quoted rather than
+ * interpolated so that shell metacharacters in it stay literal.
+ */
+export function changeDirectory(directory: string) {
+  cwd = directory;
+  writeCommandToPty(`cd ${quotePath(directory)}`);
 }
 
 // This handles the simulated git terminal
@@ -137,10 +153,14 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
       ptyProcess.kill();
     }
 
-    // Reset cwd to home on each new pty spawn
-    cwd = process.env.HOME || process.env.USERPROFILE || os.homedir();
+    // Reset cwd to home on each new pty spawn, unless a queued command (e.g. an
+    // exercise started while the terminal was mounting) already set one.
+    if (pendingCommands.length === 0) {
+      cwd = process.env.HOME || process.env.USERPROFILE || os.homedir();
+    }
 
     const shell = resolveShell();
+    isPosixShell = !/cmd\.exe$|powershell\.exe$|pwsh\.exe$/i.test(shell);
     ptyProcess = pty.spawn(shell, [], {
       name: "xterm-256color",
       cols,
@@ -163,7 +183,7 @@ export function setupTerminalIpc(mainWindow: BrowserWindow) {
         hasReplayedQueue = true;
         const queued = pendingCommands;
         pendingCommands = [];
-        queued.forEach(runCommandInPty);
+        queued.forEach(writeCommandToPty);
       }
     });
   });
