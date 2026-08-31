@@ -1,7 +1,7 @@
 import { WebContentsView, BrowserWindow, screen } from "electron";
 import { ipcMainOn } from "../utils/util.js";
 import { getWcvPreloadPath } from "../pathResolver.js";
-import { _download, _verify } from "./gitmastery.js";
+import { startExercise, _verify } from "./gitmastery.js";
 import { getMainWindow } from "../main.js";
 import { sendToRenderer } from "./ipcUtils.js";
 
@@ -121,7 +121,7 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
     if (channel === "wcv-start-exercise") {
       const { exerciseId } = args[0] as { exerciseId: string };
       console.log("[wcv] start exercise clicked:", exerciseId);
-      _download(mainWindow, `${exerciseId}`);
+      void startExercise(mainWindow, `${exerciseId}`);
     } else if (channel === "wcv-verify-exercise") {
       const { exerciseId } = args[0] as { exerciseId: string };
       console.log("[wcv] verify exercise clicked:", exerciseId);
@@ -133,7 +133,6 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
     // All DOM manipulation must live inside the executeJavaScript string —
     // DOM nodes cannot cross the process boundary.
     // window.wcvBridge is available because wcv-preload.cts is loaded.
-    console.log("now executing javascript to inject exercise buttons");
     await wcv.webContents.executeJavaScript(`
       (function() {
         var SOLID_BG = "#2d864e";
@@ -197,7 +196,6 @@ function injectExerciseButtons(mainWindow: BrowserWindow) {
             container.appendChild(createStartButton(id));
             container.appendChild(createVerifyButton(id));
             el.replaceWith(container);
-            console.log("replaced verify div: ", el.id);
           });
         }
 
@@ -279,7 +277,6 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
       width: number;
       height: number;
     }) => {
-      console.log("[info] wcv-size event received");
       getOrCreateWcv(mainWindow);
 
       /**
@@ -301,7 +298,6 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
 
       const display = screen.getDisplayNearestPoint(centerPt);
       const scalingFactor = display.scaleFactor;
-      console.log({ scalingFactor });
 
       // screen.screenToDipPoint is Windows-only. On macOS/Linux, Electron already
       // works in DIP (logical pixel) space, so raw x/y values need no conversion.
@@ -321,14 +317,12 @@ export function setupWebContentsViewIpc(mainWindow: BrowserWindow) {
   );
 
   ipcMainOn("wcv-show", () => {
-    console.log("[info] wcv-show event received");
     getOrCreateWcv(mainWindow);
     isHidden = false;
     applyBounds();
   });
 
   ipcMainOn("wcv-navigate", ({ url }: { url: string }) => {
-    console.log("[info] wcv-navigate event received");
     const view = getOrCreateWcv(mainWindow);
     const currentUrl = view.webContents.getURL();
     if (currentUrl && isSameDocumentHashChange(currentUrl, url)) {
